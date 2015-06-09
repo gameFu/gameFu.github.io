@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title>gameFu Blog</title>
+  <title>gameFu's Blog</title>
   <id>http://blog.example.com</id>
   <link href="http://blog.example.com"/>
   <link href="http://blog.example.com/feed.xml" rel="self"/>
@@ -13,18 +13,17 @@
     <link rel="alternate" href="http://blog.example.com/2015/06/09/postgresql-9-4-jsonb/"/>
     <id>http://blog.example.com/2015/06/09/postgresql-9-4-jsonb/</id>
     <published>2015-06-09T15:19:00+08:00</published>
-    <updated>2015-06-09T16:18:28+08:00</updated>
-    <summary type="html">&lt;p&gt;&lt;strong&gt;PostgreSQL 9.4 引入了&lt;code&gt;jsonb&lt;/code&gt;，一个新的列类型用于存储文档到你的关系数据库中。&lt;code&gt;jsonb&lt;/code&gt;和&lt;code&gt;json&lt;/code&gt;在更高的层面上看起来几乎是一样的，但在存储实现上是不同的。&lt;/strong&gt;&lt;/p&gt;
+    <updated>2015-06-09T16:36:49+08:00</updated>
+    <summary type="html">&lt;p&gt;转载翻译自&lt;a href="http://nandovieira.com/using-postgresql-and-jsonb-with-ruby-on-rails"&gt;http://nandovieira.com/using-postgresql-and-jsonb-with-ruby-on-rails&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;PostgreSQL 9.4 引入了&lt;code&gt;jsonb&lt;/code&gt;，一个新的列类型用于存储文档到你的关系数据库中。&lt;code&gt;jsonb&lt;/code&gt;和&lt;code&gt;json&lt;/code&gt;在更高的层面上看起来几乎是一样的，但在存储实现上是不同的。&lt;/strong&gt;&lt;/p&gt;
 
 &lt;p&gt;使用&lt;code&gt;jsonb&lt;/code&gt;的优势在于你可以轻易的整合关系型数据和非关系型数据，&lt;a href="http://obartunov.livejournal.com/175235.html"&gt;在性能方面，可以比大多数类似于MongoDB这样的非关系数据库更好&lt;/a&gt;&lt;/p&gt;
 
-&lt;h4 id="理解json和jsonb之间的不同"&gt;&lt;strong&gt;理解json和jsonb之间的不同&lt;/strong&gt;&lt;/h4&gt;
+&lt;h4 id="理解json和jsonb之间的不同"&gt;&lt;strong&gt;理解json和jsonb之间的不...&lt;/strong&gt;&lt;/h4&gt;</summary>
+    <content type="html">&lt;p&gt;转载翻译自&lt;a href="http://nandovieira.com/using-postgresql-and-jsonb-with-ruby-on-rails"&gt;http://nandovieira.com/using-postgresql-and-jsonb-with-ruby-on-rails&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;因此，两种列类型之间的区别是什么？当我们比较写入数据速度时，由于数据存储的方式的原因，&lt;code&gt;jsonb&lt;/code&gt;会比&lt;code&gt;json&lt;/code&gt;稍微的慢一点。&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;p&gt;&lt;code&gt;json&lt;/code&gt;存储完整...&lt;/p&gt;&lt;/li&gt;&lt;/ul&gt;</summary>
-    <content type="html">&lt;p&gt;&lt;strong&gt;PostgreSQL 9.4 引入了&lt;code&gt;jsonb&lt;/code&gt;，一个新的列类型用于存储文档到你的关系数据库中。&lt;code&gt;jsonb&lt;/code&gt;和&lt;code&gt;json&lt;/code&gt;在更高的层面上看起来几乎是一样的，但在存储实现上是不同的。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;PostgreSQL 9.4 引入了&lt;code&gt;jsonb&lt;/code&gt;，一个新的列类型用于存储文档到你的关系数据库中。&lt;code&gt;jsonb&lt;/code&gt;和&lt;code&gt;json&lt;/code&gt;在更高的层面上看起来几乎是一样的，但在存储实现上是不同的。&lt;/strong&gt;&lt;/p&gt;
 
 &lt;p&gt;使用&lt;code&gt;jsonb&lt;/code&gt;的优势在于你可以轻易的整合关系型数据和非关系型数据，&lt;a href="http://obartunov.livejournal.com/175235.html"&gt;在性能方面，可以比大多数类似于MongoDB这样的非关系数据库更好&lt;/a&gt;&lt;/p&gt;
 
