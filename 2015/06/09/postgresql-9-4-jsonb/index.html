@@ -1,0 +1,331 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><meta content="initial-scale=1.0, user-scalable=no" name="viewport" /><title>PostgreSQL 9.4 中使用jsonb | gameFu Blog</title><meta description="PostgreSQL 9.4 引入了jsonb，一个新的列类型用于存储文档到你的关系数据库中。jsonb和json在更高的层面上看起来几乎是一样的，但在存储实现上是不同的。  使用jsonb的优势在于你可以轻易的整合关系型数据和非关系型数据，在性能方面，可以比大多数类似于MongoDB这样的非关系数据库更好  理解json和jsonb之间的不同  因此，两种列类型之间的区别是什么？当我们比较写入数据速度时，由于数据存储的方式的原因，jsonb会比json稍微的慢一点。   json存储完整..." /><link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" /><link href="../../../../stylesheets/all-d495412b.css" rel="stylesheet" type="text/css" /><link href="../../../../images/favicon-6c3f3d04.png" rel="icon" type="image/png" /></head><body><header><div id="top-menu"><div class="top-menu-wrapper"><div class="top-menu-list"><ul><li><a href="/">Home</a></li><li><a href="/archives/">Archives</a></li><li><a href="/tags/">Tags</a></li><li><a href="/by-year/">By Year</a></li></ul></div><div class="feed"><a href="/feed.xml"><i class="fa fa-rss-square"></i></a></div></div></div><h1 class="logo"><a href="/" title="gameFu Blog"><span class="logo-text">gameFu Blog</span></a></h1></header><main><article><h1 class="article-title">PostgreSQL 9.4 中使用jsonb</h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">June 09, 2015</span></div><div class="tag-labels"><a href="/tags/postgresql/"><small class="tag-label">PostgreSQL</small></a><a href="/tags/jsonb/"><small class="tag-label">jsonb</small></a></div><hr class="article-header-separator" /><p><strong>PostgreSQL 9.4 引入了<code>jsonb</code>，一个新的列类型用于存储文档到你的关系数据库中。<code>jsonb</code>和<code>json</code>在更高的层面上看起来几乎是一样的，但在存储实现上是不同的。</strong></p>
+
+<p>使用<code>jsonb</code>的优势在于你可以轻易的整合关系型数据和非关系型数据，<a href="http://obartunov.livejournal.com/175235.html">在性能方面，可以比大多数类似于MongoDB这样的非关系数据库更好</a></p>
+
+<h4 id="理解json和jsonb之间的不同"><strong>理解json和jsonb之间的不同</strong></h4>
+
+<p>因此，两种列类型之间的区别是什么？当我们比较写入数据速度时，由于数据存储的方式的原因，<code>jsonb</code>会比<code>json</code>稍微的慢一点。</p>
+
+<ul>
+<li><p><code>json</code>存储完整复制过来的文本输入，必须一遍又一遍的解析在你调用任何函数的时候。它不支持索引，但你可以为查询创建表达式索引。</p></li>
+<li><p><code>jsonb</code>存储的二进制格式，避免了重新解析数据结构。它支持索引，这意味着你可以不使用指定的索引就能查询任何路径。</p></li>
+</ul>
+
+<p>其他的不同包括，<code>json</code>列会每次都解析存储的值，这意味着键的顺序要和输入的时候一样。但<code>jsonb</code>不同，以二进制格式存储且不保证键的顺序。因此，如果你有软件需要依赖键的顺序，<code>jsonb</code>可能不是你的应用的最佳选择。</p>
+
+<p>让我们运行一个简单的基准测试。在这个例子中，我使用下面这样一个<code>json</code>数据结构：</p>
+<pre class="highlight json"><code><span class="p">{</span><span class="w">
+  </span><span class="nt">"twitter"</span><span class="p">:</span><span class="w"> </span><span class="s2">"johndoe1"</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"github"</span><span class="p">:</span><span class="w"> </span><span class="s2">"johndoe1"</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"bio"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Lorem ipsum dolor sit amet, consectetur adipisicing elit. Labore impedit 
+          aliquam sapiente dolore magni aliquid ipsa ad, enim, esse ut reprehenderit 
+          quaerat deleniti fugit eaque. Vero eligendi voluptatibus atque, asperiores."</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"blog"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http://johndoe1.example.com"</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"interests"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="s2">"music"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"movies"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"programming"</span><span class="w">
+  </span><span class="p">],</span><span class="w">
+  </span><span class="nt">"age"</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"newsletter"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre>
+
+<p><a href="https://gist.github.com/fnando/f672c9243186933b3c8e">插入30000条完全一样的记录</a>，我相信<code>jsonb</code>在插入复杂结构时会慢一些。</p>
+<pre class="highlight plaintext"><code>Rehearsal ------------------------------------------------
+insert jsonb   2.690000   0.590000   3.280000 ( &gt;12.572343)
+insert json    2.690000   0.590000   3.280000 ( 12.766534)
+--------------------------------------- total: 6.560000sec
+
+-----------------------------------------user     system      total        real
+insert jsonb   2.680000   0.590000   3.270000 ( 13.206602)
+insert json    2.650000   0.580000   3.230000 ( 12.577138)
+</code></pre>
+
+<p>真正的差距在查询<code>json/jsonb</code>列的时候。首先让我们看看这张表和索引。</p>
+<pre class="highlight sql"><code>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="p">(</span>
+  <span class="n">id</span> <span class="n">serial</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">settings</span> <span class="n">jsonb</span> <span class="k">not</span> <span class="k">null</span> <span class="k">default</span> <span class="s1">'{}'</span><span class="p">,</span>
+  <span class="n">preferences</span> <span class="n">json</span> <span class="k">not</span> <span class="k">null</span> <span class="k">default</span> <span class="s1">'{}'</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">settings_index</span> <span class="k">ON</span> <span class="n">users</span> <span class="k">USING</span> <span class="n">gin</span> <span class="p">(</span><span class="n">settings</span><span class="p">);</span>
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">twitter_settings_index</span> <span class="k">ON</span> <span class="n">users</span> <span class="p">((</span><span class="n">settings</span><span class="o">-&gt;&gt;</span><span class="s1">'github'</span><span class="p">));</span>
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">preferences_index</span> <span class="k">ON</span> <span class="n">users</span> <span class="p">((</span><span class="n">preferences</span><span class="o">-&gt;&gt;</span><span class="s1">'github'</span><span class="p">));</span>
+
+</code></pre>
+
+<p>注意我们有一个GIN索引在<code>settings</code>列上，两个给出的路径（github）表达式索引。在30000条数据中搜索Github用户名为john30000的记录（最后一个插入的记录），<a href="https://gist.github.com/fnando/f672c9243186933b3c8e">会给出以下数字</a>：</p>
+<pre class="highlight plaintext"><code>Rehearsal -----------------------------------------------------------------
+read jsonb (index column)       0.030000   0.030000   0.060000 (  3.673465)
+read jsonb (expression index)   0.010000   0.010000   0.020000 (  0.087105)
+read json (expression index)    0.010000   0.020000   0.030000 (  0.080121)
+read json (no index)            0.060000   0.030000   0.090000 (113.206747)
+-------------------------------------------------------- total: 0.200000sec
+
+-----------------------------------------user     system      total        real
+read jsonb (index column)       0.010000   0.020000   0.030000 (  0.092476)
+read jsonb (expression index)   0.010000   0.010000   0.020000 (  0.078916)
+read json (expression index)    0.010000   0.010000   0.020000 (  0.081908)
+read json (no index)            0.050000   0.040000   0.090000 (110.761944)
+</code></pre>
+
+<p>和你看到的那样，表达式索引在两种数据类型中的性能几乎完全一样，所以它们在这里并没有实际的意义。剩下的两列不同的地方在于在查询列时有没有索引；<code>jsonb</code>能在整列建立GIN/GIST索引，而<code>json</code>不能建立这样的索引。这也是为什么这<code>json</code>查询速度这么慢的原因。</p>
+
+<p>让我们检查下在没有索引的情况下查询分析器查询数据。</p>
+<pre class="highlight sql"><code>
+<span class="k">EXPLAIN</span>
+<span class="k">SELECT</span> <span class="o">*</span>
+<span class="k">FROM</span> <span class="n">users</span>
+<span class="k">WHERE</span> <span class="n">settings</span> <span class="o">@&gt;</span> <span class="s1">'{"twitter": "john30000"}'</span> <span class="k">LIMIT</span> <span class="mi">1</span><span class="p">;</span>
+
+<span class="c1">--                                      QUERY PLAN
+-- -------------------------------------------------------------------------------------
+--  Limit  (cost=28.23..31.96 rows=1 width=468)
+--    -&gt;  Bitmap Heap Scan on users  (cost=28.23..140.07 rows=30 width=468)
+--          Recheck Cond: (settings @&gt; '{"twitter": "john30000"}'::jsonb)
+--          -&gt;  Bitmap Index Scan on settings_index  (cost=0.00..28.23 rows=30 width=0)
+--                Index Cond: (settings @&gt; '{"twitter": "john30000"}'::jsonb)
+</span>
+<span class="k">EXPLAIN</span>
+<span class="k">SELECT</span> <span class="o">*</span>
+<span class="k">FROM</span> <span class="n">users</span>
+<span class="k">WHERE</span> <span class="n">preferences</span><span class="o">-&gt;&gt;</span><span class="s1">'twitter'</span> <span class="o">=</span> <span class="s1">'john30000'</span> <span class="k">LIMIT</span> <span class="mi">1</span><span class="p">;</span>
+
+<span class="c1">--                                QUERY PLAN
+-- -------------------------------------------------------------------------
+--  Limit  (cost=0.00..25.23 rows=1 width=468)
+--    -&gt;  Seq Scan on users  (cost=0.00..3784.00 rows=150 width=468)
+--          Filter: ((preferences -&gt;&gt; 'twitter'::text) = 'john30000'::text)
+</span>
+</code></pre>
+
+<p>最重要的是，<code>json</code>做的是顺序扫描，这意味着PostgreSQL将根据顺序一条一条往下找，直到找到符合条件的数据，同时记住查找这些数据时，每条记录中的JSON内容都会被解析，这将导致在复杂结构中查询速度变慢。</p>
+
+<p>但这些不会发生<code>jsonb</code>列中，这种查找使用了索引，却并没有像使用表达式索引那样将速度优化的很好。</p>
+
+<p><code>jsonb</code>有一个需要注意的点是，<code>jsonb</code>会一直顺序检索如果你使用<code>-&gt;&gt;</code>操作符在一个没有表达式索引的路径上。</p>
+<pre class="highlight sql"><code>
+<span class="k">EXPLAIN</span>
+<span class="k">SELECT</span> <span class="o">*</span>
+<span class="k">FROM</span> <span class="n">users</span>
+<span class="k">WHERE</span> <span class="n">settings</span><span class="o">-&gt;&gt;</span><span class="s1">'twitter'</span> <span class="o">=</span> <span class="s1">'johndoe30000'</span> <span class="k">LIMIT</span> <span class="mi">1</span><span class="p">;</span>
+
+<span class="c1">--                                QUERY PLAN
+-- -------------------------------------------------------------------------
+--  Limit  (cost=0.00..25.23 rows=1 width=468)
+--    -&gt;  Seq Scan on users  (cost=0.00..3784.00 rows=150 width=468)
+--          Filter: ((settings -&gt;&gt; 'twitter'::text) = 'johndoe30000'::text)
+-- (3 rows)
+</span>
+</code></pre>
+
+<p>因此，在你不提前知道查询哪个<code>json</code>数据中的键或者查询所有<code>json</code>路径的情况下，请确保你定义了GIN/GIST索引和使用<code>@&gt;</code>（或者其他有利于索引的操作符）</p>
+
+<h4 id="json转化为jsonb"><strong>json转化为jsonb</strong></h4>
+
+<p>如果你已经使用了<code>json</code>格式或者<code>text</code>格式的列存储JSON数据，你可以将他们转化为<code>jsonb</code>，因而你可以依靠列索引。</p>
+<pre class="highlight sql"><code>
+<span class="k">BEGIN</span><span class="p">;</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="k">ADD</span> <span class="k">COLUMN</span> <span class="n">preferences_jsonb</span> <span class="n">jsonb</span> <span class="k">DEFAULT</span> <span class="s1">'{}'</span><span class="p">;</span>
+<span class="k">UPDATE</span> <span class="n">users</span> <span class="k">set</span> <span class="n">preferences_jsonb</span> <span class="o">=</span> <span class="n">preferences</span><span class="p">::</span><span class="n">jsonb</span><span class="p">;</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="k">ALTER</span> <span class="k">COLUMN</span> <span class="n">preferences_jsonb</span> <span class="k">SET</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="k">RENAME</span> <span class="k">COLUMN</span> <span class="n">preferences</span> <span class="k">TO</span> <span class="n">preferences_json</span><span class="p">;</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="k">RENAME</span> <span class="k">COLUMN</span> <span class="n">preferences_jsonb</span> <span class="k">TO</span> <span class="n">preferences</span><span class="p">;</span>
+
+<span class="c1">-- Don't remove the column until you're sure everything is working.
+-- ALTER TABLE users DROP COLUMN preferences_json;
+</span>
+<span class="k">COMMIT</span><span class="p">;</span>
+
+</code></pre>
+
+<p>现在你已经知道了<code>json</code>是如何工作的，让我们看看在Ruby on Rails中是怎么使用的。</p>
+
+<h4 id="在ruby-on-rails中使用jsonb"><strong>在Ruby on Rails中使用jsonb</strong></h4>
+
+<p>Rails从4.2版本开始支持<code>jsonb</code>，使用他跟使用<code>string</code>或<code>text</code>类型的列一样简单，在下面的代码中，你将看到如何添加<code>jsonb</code>类型的列到已经存在的表中。</p>
+<pre class="highlight ruby"><code>
+<span class="c1"># db/migrate/*_create_users.rb</span>
+<span class="k">class</span> <span class="nc">CreateUsers</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Migration</span>
+  <span class="k">def</span> <span class="nf">change</span>
+    <span class="n">enable_extension</span> <span class="s1">'citext'</span>
+
+    <span class="n">create_table</span> <span class="ss">:users</span> <span class="k">do</span> <span class="o">|</span><span class="n">t</span><span class="o">|</span>
+      <span class="n">t</span><span class="p">.</span><span class="nf">text</span> <span class="ss">:name</span><span class="p">,</span> <span class="ss">null: </span><span class="kp">false</span>
+      <span class="n">t</span><span class="p">.</span><span class="nf">citext</span> <span class="ss">:username</span><span class="p">,</span> <span class="ss">null: </span><span class="kp">false</span>
+      <span class="n">t</span><span class="p">.</span><span class="nf">jsonb</span> <span class="ss">:preferences</span><span class="p">,</span> <span class="ss">null: </span><span class="kp">false</span><span class="p">,</span> <span class="ss">default: </span><span class="s1">'{}'</span>
+    <span class="k">end</span>
+
+    <span class="n">add_index</span>  <span class="ss">:users</span><span class="p">,</span> <span class="ss">:preferences</span><span class="p">,</span> <span class="ss">using: :gin</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="c1"># db/migrate/*_add_jsonb_column_to_users.rb</span>
+<span class="k">class</span> <span class="nc">AddJsonbColumnToUsers</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Migration</span>
+  <span class="k">def</span> <span class="nf">change</span>
+    <span class="n">add_column</span> <span class="ss">:users</span><span class="p">,</span> <span class="ss">:preferences</span><span class="p">,</span> <span class="ss">:jsonb</span><span class="p">,</span> <span class="ss">null: </span><span class="kp">false</span><span class="p">,</span> <span class="ss">default: </span><span class="s1">'{}'</span>
+    <span class="n">add_index</span>  <span class="ss">:users</span><span class="p">,</span> <span class="ss">:preferences</span><span class="p">,</span> <span class="ss">using: :gin</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+</code></pre>
+
+<p>注意，我们已经定义了GIN类型的索引，如果你想对给出的路径创建表达式索引，你必须使用<code>execute</code>。在这个例子中，Rails不知道怎么使用ruby来转化这个索引，所以你最好选择将格式转为SQL。</p>
+<pre class="highlight ruby"><code>
+<span class="c1"># config/initializers/active_record.rb</span>
+<span class="no">Rails</span><span class="p">.</span><span class="nf">application</span><span class="p">.</span><span class="nf">config</span><span class="p">.</span><span class="nf">active_record</span><span class="p">.</span><span class="nf">schema_format</span> <span class="o">=</span> <span class="ss">:sql</span>
+
+<span class="c1"># db/migrate/*_add_index_to_preferences_path_on_users.rb</span>
+<span class="k">class</span> <span class="nc">AddIndexToPreferencesPathOnUsers</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Migration</span>
+  <span class="k">def</span> <span class="nf">change</span>
+    <span class="n">execute</span> <span class="o">&lt;&lt;-</span><span class="no">SQL</span><span class="sh">
+      CREATE INDEX user_prefs_newsletter_index ON users ((preferences-&gt;&gt;'newsletter'))
+</span><span class="no">    SQL</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+</code></pre>
+
+<p>你的模型不需要做任何配置。你只需要创建支持<code>json</code>序列化的记录来提供对象。</p>
+<pre class="highlight ruby"><code>
+<span class="n">user</span> <span class="o">=</span> <span class="no">User</span><span class="p">.</span><span class="nf">create!</span><span class="p">({</span>
+  <span class="ss">name: </span><span class="s1">'John Doe'</span><span class="p">,</span>
+  <span class="ss">username: </span><span class="s1">'johndoe'</span><span class="p">,</span>
+  <span class="ss">preferences: </span><span class="p">{</span>
+    <span class="ss">twitter: </span><span class="s1">'johndoe'</span><span class="p">,</span>
+    <span class="ss">github: </span><span class="s1">'johndoe'</span><span class="p">,</span>
+    <span class="ss">blog: </span><span class="s1">'http://example.com'</span>
+  <span class="p">}</span>
+<span class="p">})</span>
+
+<span class="c1"># Reload record from database to enforce serialization.</span>
+<span class="n">user</span><span class="p">.</span><span class="nf">reload</span>
+
+<span class="c1"># Show preferences.</span>
+<span class="n">user</span><span class="p">.</span><span class="nf">preferences</span>
+<span class="c1">#=&gt; {"blog"=&gt;"http://example.com", "github"=&gt;"johndoe", "twitter"=&gt;"johndoe"}</span>
+
+<span class="c1"># Get blog.</span>
+<span class="n">user</span><span class="p">.</span><span class="nf">preferences</span><span class="p">[</span><span class="s1">'blog'</span><span class="p">]</span>
+<span class="c1">#=&gt; http://example.com</span>
+
+</code></pre>
+
+<p>可以看到所有的键都是以<code>string</code>形式返回。你也可以使用通用的序列化方式，你就可以通过符号来访问JSON对象。</p>
+<pre class="highlight ruby"><code>
+<span class="c1"># app/models/user.rb</span>
+<span class="k">class</span> <span class="nc">User</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span>
+  <span class="n">serialize</span> <span class="ss">:preferences</span><span class="p">,</span> <span class="no">HashSerializer</span>
+<span class="k">end</span>
+
+<span class="c1"># app/serializers/hash_serializer.rb</span>
+<span class="k">class</span> <span class="nc">HashSerializer</span>
+  <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">dump</span><span class="p">(</span><span class="nb">hash</span><span class="p">)</span>
+    <span class="nb">hash</span><span class="p">.</span><span class="nf">to_json</span>
+  <span class="k">end</span>
+
+  <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">load</span><span class="p">(</span><span class="nb">hash</span><span class="p">)</span>
+    <span class="p">(</span><span class="nb">hash</span> <span class="o">||</span> <span class="p">{}).</span><span class="nf">with_indifferent_access</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre>
+
+<p>另一个比较有意思的是ActiveRecord特性就是<code>store_accessor</code>。如果你更改一些属性比较频繁，你可以创建<code>accessor</code>，这样你可以赋值给属性来代替JSON传值。这也使得数据验证和创建表单更加简单。因此，如果我们创建一个表单来保存博客url、Github和Twitter账户，你可以像下面这样使用：</p>
+<pre class="highlight ruby"><code>
+<span class="k">class</span> <span class="nc">User</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span>
+  <span class="n">serialize</span> <span class="ss">:preferences</span><span class="p">,</span> <span class="no">HashSerializer</span>
+  <span class="n">store_accessor</span> <span class="ss">:preferences</span><span class="p">,</span> <span class="ss">:blog</span><span class="p">,</span> <span class="ss">:github</span><span class="p">,</span> <span class="ss">:twitter</span>
+<span class="k">end</span>
+
+</code></pre>
+
+<p>现在你可以简单的赋值给这些属性了。</p>
+<pre class="highlight ruby"><code>
+<span class="n">user</span> <span class="o">=</span> <span class="no">User</span><span class="p">.</span><span class="nf">new</span><span class="p">(</span><span class="ss">blog: </span><span class="s1">'http://example.org'</span><span class="p">,</span> <span class="ss">github: </span><span class="s1">'johndoe'</span><span class="p">)</span>
+
+<span class="n">user</span><span class="p">.</span><span class="nf">preferences</span>
+<span class="c1">#=&gt; {"blog"=&gt;"http://example.org", "github"=&gt;"johndoe"}</span>
+
+<span class="n">user</span><span class="p">.</span><span class="nf">blog</span>
+<span class="c1">#=&gt; http://example.org</span>
+
+<span class="n">user</span><span class="p">.</span><span class="nf">preferences</span><span class="p">[</span><span class="ss">:github</span><span class="p">]</span>
+<span class="c1">#=&gt; johndoe</span>
+
+<span class="n">user</span><span class="p">.</span><span class="nf">preferences</span><span class="p">[</span><span class="s1">'github'</span><span class="p">]</span>
+<span class="c1">#=&gt; johndoe</span>
+
+</code></pre>
+
+<p>定义了 store accessors 后，你可以像正常其他属性一样，定义数据验证和创建表单</p>
+
+<h4 id="查询jsonb列"><strong>查询jsonb列</strong></h4>
+
+<p>现在是时候使用一些查询操作。关于PostgreSQL的更多操作，请<a href="http://www.postgresql.org/docs/9.4/static/functions-json.html">阅读完整的文档列表</a></p>
+
+<p>同时，记得使用注释你执行的查询语句；这有助于你更好的去做索引优化。</p>
+
+<p><strong>订阅新闻邮件的用户</strong></p>
+<pre class="highlight ruby"><code>
+<span class="c1"># preferences-&gt;newsletter = true</span>
+<span class="no">User</span><span class="p">.</span><span class="nf">where</span><span class="p">(</span><span class="s1">'preferences @&gt; ?'</span><span class="p">,</span> <span class="p">{</span><span class="ss">newsletter: </span><span class="kp">true</span><span class="p">}.</span><span class="nf">to_json</span><span class="p">)</span>
+
+</code></pre>
+
+<p><strong>对Ruby感兴趣的用户</strong></p>
+<pre class="highlight ruby"><code>
+<span class="c1"># preferences-&gt;interests = ['ruby', 'javascript', 'python']</span>
+<span class="no">User</span><span class="p">.</span><span class="nf">where</span><span class="p">(</span><span class="s2">"preferences -&gt; 'interests' ? :language"</span><span class="p">,</span> <span class="ss">language: </span><span class="s1">'ruby'</span><span class="p">)</span>
+
+</code></pre>
+
+<p>这个查询不会用到列索引；如果你想查询数组，请确保你创建了表达式索引。</p>
+<pre class="highlight ruby"><code>
+<span class="no">CREATE</span> <span class="no">INDEX</span> <span class="n">preferences_interests_on_users</span> <span class="no">ON</span> <span class="n">users</span> <span class="no">USING</span> <span class="no">GIN</span> <span class="p">((</span><span class="n">preferences</span><span class="o">-&gt;</span><span class="s1">'interests'</span><span class="p">))</span>
+
+</code></pre>
+
+<p><strong>设置了Twitter和Github账号的用户</strong></p>
+<pre class="highlight ruby"><code>
+<span class="c1"># preferences-&gt;twitter AND preferences-&gt;github</span>
+<span class="no">User</span><span class="p">.</span><span class="nf">where</span><span class="p">(</span><span class="s1">'preferences ?&amp; array[:keys]'</span><span class="p">,</span> <span class="ss">keys: </span><span class="p">[</span><span class="s1">'twitter'</span><span class="p">,</span> <span class="s1">'github'</span><span class="p">])</span>
+
+</code></pre>
+
+<p><strong>设置Twitter或Github账号的用户</strong></p>
+<pre class="highlight ruby"><code>
+<span class="c1"># preferences-&gt;twitter OR preferences-&gt;github</span>
+<span class="no">User</span><span class="p">.</span><span class="nf">where</span><span class="p">(</span><span class="s1">'preferences ?| array[:keys]'</span><span class="p">,</span> <span class="ss">keys: </span><span class="p">[</span><span class="s1">'twitter'</span><span class="p">,</span> <span class="s1">'github'</span><span class="p">])</span>
+
+</code></pre>
+
+<p><strong>住在洛杉矶/加利福尼亚的用户</strong></p>
+<pre class="highlight ruby"><code>
+<span class="c1"># preferences-&gt;state = 'SP' AND preferences-&gt;city = 'São Paulo'</span>
+<span class="no">User</span><span class="p">.</span><span class="nf">where</span><span class="p">(</span><span class="s1">'preferences @&gt; ?'</span><span class="p">,</span> <span class="p">{</span><span class="ss">city: </span><span class="s1">'San Francisco'</span><span class="p">,</span> <span class="ss">state: </span><span class="s1">'CA'</span><span class="p">}.</span><span class="nf">to_json</span><span class="p">)</span>
+
+</code></pre>
+
+<h4 id="关于hstore"><strong>关于hstore</strong></h4>
+
+<p><code>hstore</code>列不允许嵌套的结构，它将所有的值以字符串形式存储，所以必须要在数据库层或者应用程序层将数据强制转化为字符串类型。而在<code>json/jsonb</code>类型的列上不会遇到这个问题，数值类型(integers/float)，布尔类型，数组，字符串和空类型都可以接受，甚至你想的任何方式的数据嵌套。</p>
+
+<p>因此推荐你尽早放弃<code>hstore</code>而去使用<code>jsonb</code>，但要记住的是你必须使用PostgreSQL 9.4以上版本才行。</p>
+
+<p><a href="http://nandovieira.com/using-postgresql-and-hstore-with-rails">我以前写的hstore</a>，想知道更多相关的内容就点击查看。</p>
+
+<h4 id="总结">总结</h4>
+
+<p>PostgreSQL是一个非常强大的数据库，幸运的是ActiveRecord能跟上PostgreSQL的更新，为jsonb和hstore特性引入了内置支持。</p>
+
+<p>而像表达式索引这样的支持也在不断的改善。将ActiveRecord的序列化改为SQL没什么大不了的，但却使的索引变得更加简单。</p>
+<pre class="highlight ruby"><code>
+<span class="c1"># This doesn't exist, but it would be nice to have it!</span>
+<span class="n">add_index</span> <span class="ss">:users</span><span class="p">,</span> <span class="s2">"(settings-&gt;&gt;'github')"</span><span class="p">,</span> <span class="ss">raw: </span><span class="kp">true</span>
+
+</code></pre>
+
+<p>在每一个新版本中，使用Rails和PostgreSQL都比过去更加容易，变得更加出色。因此，尝试使用最新的Rails版本，付出总是会很快得到回报的。</p>
+<div class="social"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2015 <a href="/">gameFu Blog</a> - Site Author</div></div></footer></body></html>
