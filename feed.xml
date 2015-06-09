@@ -4,10 +4,19 @@
   <id>http://blog.example.com</id>
   <link href="http://blog.example.com"/>
   <link href="http://blog.example.com/feed.xml" rel="self"/>
-  <updated>2015-06-09T15:19:00+08:00</updated>
+  <updated>2015-06-09T17:33:00+08:00</updated>
   <author>
     <name>Site Author</name>
   </author>
+  <entry>
+    <title>example</title>
+    <link rel="alternate" href="http://blog.example.com/2015/06/09/example/"/>
+    <id>http://blog.example.com/2015/06/09/example/</id>
+    <published>2015-06-09T17:33:00+08:00</published>
+    <updated>2015-06-09T17:33:23+08:00</updated>
+    <summary type="html"></summary>
+    <content type="html"></content>
+  </entry>
   <entry>
     <title>PostgreSQL 9.4 中使用jsonb</title>
     <link rel="alternate" href="http://blog.example.com/2015/06/09/postgresql-9-4-jsonb/"/>
