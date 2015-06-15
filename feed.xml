@@ -4,10 +4,93 @@
   <id>http://blog.example.com</id>
   <link href="http://blog.example.com"/>
   <link href="http://blog.example.com/feed.xml" rel="self"/>
-  <updated>2015-06-09T17:41:00+08:00</updated>
+  <updated>2015-06-15T22:57:00+08:00</updated>
   <author>
     <name>Site Author</name>
   </author>
+  <entry>
+    <title>centos7 服务器部署ssh证书授权登录</title>
+    <link rel="alternate" href="http://blog.example.com/2015/06/15/centos7-deploy-ssh/"/>
+    <id>http://blog.example.com/2015/06/15/centos7-deploy-ssh/</id>
+    <published>2015-06-15T22:57:00+08:00</published>
+    <updated>2015-06-15T23:24:26+08:00</updated>
+    <summary type="html">&lt;h3 id="使用ssh证书授权登录的必要性"&gt;使用ssh证书授权登录的必要性&lt;/h3&gt;
+
+&lt;p&gt;普通用户登录时，以往的做法往往是使用账号密码登录，但是这样的登录方式风险相当高，使用密钥登录能大大降低这个风险，这个密钥是针对每台计算机生成的独一无二的凭证，保存在登录用户的电脑中，只能通过登录用户电脑的证书授权才能登录服务器。&lt;/p&gt;
+
+&lt;h3 id="登录用户电脑操作"&gt;登录用户电脑操作&lt;/h3&gt;
+
+&lt;h4 id="建立~/.ssh目录（如果没有）"&gt;建立~/.ssh目录（如果没有）&lt;/h4&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;ls -al ~/.ssh
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id="根据邮箱创建私钥"&gt;根据邮箱创建私钥&lt;/h4&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;ssh-keygen -t rsa -b 4096 -C &lt;span class="s2"&gt;&amp;quot;your_email@example.com&amp;quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;按照流程走完...&lt;/p&gt;</summary>
+    <content type="html">&lt;h3 id="使用ssh证书授权登录的必要性"&gt;使用ssh证书授权登录的必要性&lt;/h3&gt;
+
+&lt;p&gt;普通用户登录时，以往的做法往往是使用账号密码登录，但是这样的登录方式风险相当高，使用密钥登录能大大降低这个风险，这个密钥是针对每台计算机生成的独一无二的凭证，保存在登录用户的电脑中，只能通过登录用户电脑的证书授权才能登录服务器。&lt;/p&gt;
+
+&lt;h3 id="登录用户电脑操作"&gt;登录用户电脑操作&lt;/h3&gt;
+
+&lt;h4 id="建立~/.ssh目录（如果没有）"&gt;建立~/.ssh目录（如果没有）&lt;/h4&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;ls -al ~/.ssh
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id="根据邮箱创建私钥"&gt;根据邮箱创建私钥&lt;/h4&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;ssh-keygen -t rsa -b 4096 -C &lt;span class="s2"&gt;"your_email@example.com"&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;按照流程走完后会在 ~/.ssh目录下看到id_rsa, id_rsa.pub文件 第一个是私有密钥 第二个是拥有密钥&lt;/p&gt;
+
+&lt;h4 id="复制id_rsa.pub中的内容（mac）"&gt;复制id_rsa.pub中的内容（mac）&lt;/h4&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;cat id_rsa.pub | pbcopy 
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id="服务器配置(centos7)"&gt;服务器配置(centos7)&lt;/h3&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;vim /etc/ssh/sshd_config
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;将如下配置前的#号去掉&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="c1"&gt;#禁用root账户登录，非必要，但为了安全性，请配置&lt;/span&gt;
+&lt;span class="no"&gt;PermitRootLogin&lt;/span&gt; &lt;span class="n"&gt;no&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 是否让 sshd 去检查用户家目录或相关档案的权限数据，&lt;/span&gt;
+&lt;span class="c1"&gt;# 这是为了担心使用者将某些重要档案的权限设错，可能会导致一些问题所致。&lt;/span&gt;
+&lt;span class="c1"&gt;# 例如使用者的 ~.ssh/ 权限设错时，某些特殊情况下会不许用户登入&lt;/span&gt;
+&lt;span class="no"&gt;StrictModes&lt;/span&gt; &lt;span class="n"&gt;no&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 是否允许用户自行使用成对的密钥系统进行登入行为，仅针对 version 2。&lt;/span&gt;
+&lt;span class="c1"&gt;# 至于自制的公钥数据就放置于用户家目录下的 .ssh/authorized_keys 内&lt;/span&gt;
+&lt;span class="no"&gt;RSAAuthentication&lt;/span&gt; &lt;span class="n"&gt;yes&lt;/span&gt;
+&lt;span class="no"&gt;PubkeyAuthentication&lt;/span&gt; &lt;span class="n"&gt;yes&lt;/span&gt;
+&lt;span class="no"&gt;AuthorizedKeysFile&lt;/span&gt;      &lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;ssh&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;authorized_keys&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 有了证书登录了，就禁用密码登录吧，安全要紧&lt;/span&gt;
+&lt;span class="no"&gt;PasswordAuthentication&lt;/span&gt; &lt;span class="n"&gt;no&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id="将密钥写到一张文件去-如test-然后将这个文件导入-～/.ssh/authorized_keys"&gt;将密钥写到一张文件去 如test 然后将这个文件导入 ～/.ssh/authorized_keys&lt;/h4&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;cat &lt;span class="nb"&gt;test&lt;/span&gt; &amp;gt;&amp;gt; ～/.ssh/authorized_keys
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id="启动ssh服务"&gt;启动ssh服务&lt;/h4&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;service sshd start
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;有可能会提示&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;Redirecting to /bin/systemctl start  sshd.service
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;只要按照提示操作就能开启ssh服务&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;/bin/systemctl start  sshd.service
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id="这样一来在计算机持有密钥的情况下就可以不使用账号密码登录服务器了"&gt;这样一来在计算机持有密钥的情况下就可以不使用账号密码登录服务器了&lt;/h4&gt;
+</content>
+  </entry>
   <entry>
     <title>Laravel(1) 注册重写</title>
     <link rel="alternate" href="http://blog.example.com/2015/06/09/laravel-1-rewrite-register/"/>

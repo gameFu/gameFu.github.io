@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><meta content="initial-scale=1.0, user-scalable=no" name="viewport" /><title>centos7 服务器部署ssh证书授权登录 | gameFu's Blog</title><meta description="使用ssh证书授权登录的必要性  普通用户登录时，以往的做法往往是使用账号密码登录，但是这样的登录方式风险相当高，使用密钥登录能大大降低这个风险，这个密钥是针对每台计算机生成的独一无二的凭证，保存在登录用户的电脑中，只能通过登录用户电脑的证书授权才能登录服务器。  登录用户电脑操作  建立~/.ssh目录（如果没有） ls -al ~/.ssh   根据邮箱创建私钥 ssh-keygen -t rsa -b 4096 -C &quot;your_email@example.com&quot;   按照流程走完..." /><link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" /><link href="../../../../stylesheets/all-d495412b.css" rel="stylesheet" type="text/css" /><link href="../../../../images/favicon-6c3f3d04.png" rel="icon" type="image/png" /></head><body><header><div id="top-menu"><div class="top-menu-wrapper"><div class="top-menu-list"><ul><li><a href="/">Home</a></li><li><a href="/archives/">Archives</a></li><li><a href="/tags/">Tags</a></li><li><a href="/by-year/">By Year</a></li></ul></div><div class="feed"><a href="/feed.xml"><i class="fa fa-rss-square"></i></a></div></div></div><h1 class="logo"><a href="/" title="gameFu's Blog"><span class="logo-text">gameFu's Blog</span></a></h1></header><main><article><h1 class="article-title">centos7 服务器部署ssh证书授权登录</h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">June 15, 2015</span></div><div class="tag-labels"><a href="/tags/centos7-ssh/"><small class="tag-label">centos7 ssh</small></a></div><hr class="article-header-separator" /><h3 id="使用ssh证书授权登录的必要性">使用ssh证书授权登录的必要性</h3>
+
+<p>普通用户登录时，以往的做法往往是使用账号密码登录，但是这样的登录方式风险相当高，使用密钥登录能大大降低这个风险，这个密钥是针对每台计算机生成的独一无二的凭证，保存在登录用户的电脑中，只能通过登录用户电脑的证书授权才能登录服务器。</p>
+
+<h3 id="登录用户电脑操作">登录用户电脑操作</h3>
+
+<h4 id="建立~/.ssh目录（如果没有）">建立~/.ssh目录（如果没有）</h4>
+<pre class="highlight shell"><code>ls -al ~/.ssh
+</code></pre>
+
+<h4 id="根据邮箱创建私钥">根据邮箱创建私钥</h4>
+<pre class="highlight shell"><code>ssh-keygen -t rsa -b 4096 -C <span class="s2">"your_email@example.com"</span>
+</code></pre>
+
+<p>按照流程走完后会在 ~/.ssh目录下看到id_rsa, id_rsa.pub文件 第一个是私有密钥 第二个是拥有密钥</p>
+
+<h4 id="复制id_rsa.pub中的内容（mac）">复制id_rsa.pub中的内容（mac）</h4>
+<pre class="highlight shell"><code>cat id_rsa.pub | pbcopy 
+</code></pre>
+
+<h3 id="服务器配置(centos7)">服务器配置(centos7)</h3>
+<pre class="highlight shell"><code>vim /etc/ssh/sshd_config
+</code></pre>
+
+<p>将如下配置前的#号去掉</p>
+<pre class="highlight ruby"><code><span class="c1">#禁用root账户登录，非必要，但为了安全性，请配置</span>
+<span class="no">PermitRootLogin</span> <span class="n">no</span>
+
+<span class="c1"># 是否让 sshd 去检查用户家目录或相关档案的权限数据，</span>
+<span class="c1"># 这是为了担心使用者将某些重要档案的权限设错，可能会导致一些问题所致。</span>
+<span class="c1"># 例如使用者的 ~.ssh/ 权限设错时，某些特殊情况下会不许用户登入</span>
+<span class="no">StrictModes</span> <span class="n">no</span>
+
+<span class="c1"># 是否允许用户自行使用成对的密钥系统进行登入行为，仅针对 version 2。</span>
+<span class="c1"># 至于自制的公钥数据就放置于用户家目录下的 .ssh/authorized_keys 内</span>
+<span class="no">RSAAuthentication</span> <span class="n">yes</span>
+<span class="no">PubkeyAuthentication</span> <span class="n">yes</span>
+<span class="no">AuthorizedKeysFile</span>      <span class="p">.</span><span class="nf">ssh</span><span class="o">/</span><span class="n">authorized_keys</span>
+
+<span class="c1"># 有了证书登录了，就禁用密码登录吧，安全要紧</span>
+<span class="no">PasswordAuthentication</span> <span class="n">no</span>
+</code></pre>
+
+<h4 id="将密钥写到一张文件去-如test-然后将这个文件导入-～/.ssh/authorized_keys">将密钥写到一张文件去 如test 然后将这个文件导入 ～/.ssh/authorized_keys</h4>
+<pre class="highlight shell"><code>cat <span class="nb">test</span> &gt;&gt; ～/.ssh/authorized_keys
+</code></pre>
+
+<h4 id="启动ssh服务">启动ssh服务</h4>
+<pre class="highlight shell"><code>service sshd start
+</code></pre>
+
+<p>有可能会提示</p>
+<pre class="highlight shell"><code>Redirecting to /bin/systemctl start  sshd.service
+</code></pre>
+
+<p>只要按照提示操作就能开启ssh服务</p>
+<pre class="highlight shell"><code>/bin/systemctl start  sshd.service
+</code></pre>
+
+<h4 id="这样一来在计算机持有密钥的情况下就可以不使用账号密码登录服务器了">这样一来在计算机持有密钥的情况下就可以不使用账号密码登录服务器了</h4>
+<div class="social"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2015 <a href="/">gameFu's Blog</a> - Site Author</div></div></footer></body></html>
