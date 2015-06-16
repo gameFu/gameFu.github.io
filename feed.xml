@@ -4,10 +4,204 @@
   <id>http://blog.example.com</id>
   <link href="http://blog.example.com"/>
   <link href="http://blog.example.com/feed.xml" rel="self"/>
-  <updated>2015-06-16T15:45:00+08:00</updated>
+  <updated>2015-06-17T00:06:00+08:00</updated>
   <author>
     <name>Site Author</name>
   </author>
+  <entry>
+    <title>Laravel(2) 登录重写</title>
+    <link rel="alternate" href="http://blog.example.com/2015/06/16/laravel-2-login-rewrite/"/>
+    <id>http://blog.example.com/2015/06/16/laravel-2-login-rewrite/</id>
+    <published>2015-06-17T00:06:00+08:00</published>
+    <updated>2015-06-17T00:11:48+08:00</updated>
+    <summary type="html">&lt;h3 id="laravel-登录重写"&gt;laravel 登录重写&lt;/h3&gt;
+
+&lt;p&gt;权限控制是几乎每套成熟系统不可缺少的一部分，我们使用的权限控制方法是rbac，我将在这个系列的文章一步步完成一个比较复杂的rbac权限控制。&lt;/p&gt;
+
+&lt;p&gt;rbac权限控制是一个非常成熟的权限控制系统，其原理是给每个用户一个或多个角色 而每个角色对系统相应模块有访问权限,具体理论知识不多介绍。在我完成这个权限控制系统中，我将普通用户和管理员用户分开在数据库中存储，我们先完成普通用户的登录，这一部分相对于管理员用户会比较简单，同时也让大家理解下登录的流程。&lt;/p&gt;
+
+&lt;h5 id="未登录用户跳转到登录页面"&gt;未登录用户跳转到...&lt;/h5&gt;</summary>
+    <content type="html">&lt;h3 id="laravel-登录重写"&gt;laravel 登录重写&lt;/h3&gt;
+
+&lt;p&gt;权限控制是几乎每套成熟系统不可缺少的一部分，我们使用的权限控制方法是rbac，我将在这个系列的文章一步步完成一个比较复杂的rbac权限控制。&lt;/p&gt;
+
+&lt;p&gt;rbac权限控制是一个非常成熟的权限控制系统，其原理是给每个用户一个或多个角色 而每个角色对系统相应模块有访问权限,具体理论知识不多介绍。在我完成这个权限控制系统中，我将普通用户和管理员用户分开在数据库中存储，我们先完成普通用户的登录，这一部分相对于管理员用户会比较简单，同时也让大家理解下登录的流程。&lt;/p&gt;
+
+&lt;h5 id="未登录用户跳转到登录页面"&gt;未登录用户跳转到登录页面&lt;/h5&gt;
+
+&lt;p&gt;当我们访问某些一定要登录后才能使用的功能时 我们往往会有一个功能就是 如果没有登录的用户，就会直接跳转到登录功能 在laravel已经提供的代码中我们可以非常轻松完成这个功能&lt;/p&gt;
+&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;HomeController&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nx"&gt;Controller&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;__construct&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+  &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;middleware&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'auth'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+
+  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;index&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+  &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;echo&lt;/span&gt; &lt;span class="nx"&gt;url&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'/home'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+    &lt;span class="k"&gt;echo&lt;/span&gt; &lt;span class="s1"&gt;'这是首页'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+  &lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;我们在随便一个需要进行登录才能使用的控制器中使调用auth这个控制器就可以了，这个控制器会去检查session中是否有登录信息来进行判断是否有没有登录 那么这个&amp;#39;auth&amp;#39;中间件在哪呢？&lt;/p&gt;
+
+&lt;p&gt;laravel中所有中间件都在app/Http/Kernel中注册&lt;/p&gt;
+&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
+  &lt;span class="k"&gt;protected&lt;/span&gt; &lt;span class="nv"&gt;$routeMiddleware&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;
+    &lt;span class="s1"&gt;'auth'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'App\Http\Middleware\Authenticate'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="s1"&gt;'auth.basic'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'Illuminate\Auth\Middleware\AuthenticateWithBasicAuth'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="s1"&gt;'guest'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'App\Http\Middleware\RedirectIfAuthenticated'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="s1"&gt;'admin_auth'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'App\Http\Middleware\AdminPermissionCheck'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+  &lt;span class="p"&gt;];&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这个数组中key是中间件的别名 value是中间件的路径 由此我们可以找到别名为auth的中间件&lt;/p&gt;
+
+&lt;p&gt;找到App\Http\Middleware\Authenticate&lt;/p&gt;
+&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
+  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;handle&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nx"&gt;Closure&lt;/span&gt; &lt;span class="nv"&gt;$next&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+  &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;auth&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;guest&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+    &lt;span class="p"&gt;{&lt;/span&gt;
+      &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;ajax&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+      &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;response&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'Unauthorized.'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;401&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+      &lt;span class="p"&gt;}&lt;/span&gt;
+      &lt;span class="k"&gt;else&lt;/span&gt;
+      &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="c1"&gt;//这个方法会跳转到Auth控制器的getLogin方法 
+&lt;/span&gt;                &lt;span class="c1"&gt;//如果没有 那么会自动跳转的视图文件夹下的auth login
+&lt;/span&gt;        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;redirect&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;guest&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'auth/login'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+      &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;$next&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;handle方法是调用中间件时调用的方法  其中guest是判断有没有登录的方法 这里我们最有可能需要改的地方就是如果没有登录跳转的方法  如上面代码所示 跳转的路径为auth/login（这个路径已经在路由中配好，跳转到Auth控制器中得getLogin方法）&lt;/p&gt;
+
+&lt;h5 id="建立一个登录视图"&gt;建立一个登录视图&lt;/h5&gt;
+
+&lt;p&gt;在AuthController中建立一个登录视图&lt;/p&gt;
+&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
+    &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;getLogin&lt;/span&gt;&lt;span class="p"&gt;(){&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;view&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;"auth.login"&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h5 id="表单数据验证"&gt;表单数据验证&lt;/h5&gt;
+
+&lt;p&gt;表单数据验证在实现部分是postLogin方法中的 UserLoginRequest $req&lt;br&gt;
+我们建立一个请求类来对表单进行数据验证 使用laravel 提供的php artsian make:request 能非常轻松的建立一个请求类&lt;/p&gt;
+&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;UserLoginRequest&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nx"&gt;Request&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+
+  &lt;span class="sd"&gt;/**
+   * Determine if the user is authorized to make this request.
+   *
+   * @return bool
+   */&lt;/span&gt;
+  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;authorize&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+  &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="kc"&gt;true&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+
+  &lt;span class="sd"&gt;/**
+   * Get the validation rules that apply to the request.
+   *
+   * @return array
+   */&lt;/span&gt;
+  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;rules&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+  &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;
+      &lt;span class="c1"&gt;//再这里对表单提交字段进行过滤
+&lt;/span&gt;      &lt;span class="s1"&gt;'identity'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'required|min:3|max:16'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+      &lt;span class="s1"&gt;'password'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'required|min:6|max:16'&lt;/span&gt;
+    &lt;span class="p"&gt;];&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+
+  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;sanitize&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+  &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;all&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h5 id="登录处理方法"&gt;登录处理方法&lt;/h5&gt;
+&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
+    &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;postLogin&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;UserLoginRequest&lt;/span&gt; &lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="p"&gt;){&lt;/span&gt;
+
+   &lt;span class="c1"&gt;//这里对传递过来得字段进行了处理 这个函数为我自己定义的函数 仅仅是为了演示用
+&lt;/span&gt;     &lt;span class="nv"&gt;$identity&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;generateLoginIdentity&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;input&lt;/span&gt;&lt;span class="p"&gt;());&lt;/span&gt;
+     &lt;span class="nv"&gt;$identity&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'password'&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;input&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'password'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+    &lt;span class="c1"&gt;//验证用户账号密码
+&lt;/span&gt;    &lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;auth&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;attempt&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$indentity&lt;/span&gt;&lt;span class="p"&gt;)){&lt;/span&gt;
+      &lt;span class="c1"&gt;//登录成功 记录用户登录时间和登录ip
+&lt;/span&gt;      &lt;span class="nv"&gt;$user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nx"&gt;User&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="na"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'id'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'='&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;auth&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;user&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;id&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;first&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
+      &lt;span class="c1"&gt;// 触发一个事件
+&lt;/span&gt;      &lt;span class="nx"&gt;event&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nx"&gt;\App\Events\UserLogin&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$user&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;ip&lt;/span&gt;&lt;span class="p"&gt;()));&lt;/span&gt;
+      &lt;span class="c1"&gt;//重定向到想要访问的页面
+&lt;/span&gt;      &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;redirect&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;intended&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'/'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;如上述代码所示 你可以对传过来得数据根据业务需要做进一步的处理&lt;/p&gt;
+
+&lt;p&gt;验证登录用户功能的代码是这一段$this-&amp;gt;auth-&amp;gt;attempt($indentity) 如果验证成功回返回true，这个函数是laravel自带Auth的一个方法 功能是去User表中匹配传过来的字段，如果需要验证更多字段,当验证成功后会将登录信息存入session中。当然Auth去查找匹配的表是可以更改的，我会在后面实现管理员用户的登录功能的时候演示怎么修改。&lt;/p&gt;
+
+&lt;p&gt;然后可以在下面的代码中继续完成你的业务逻辑  如我代码中所示的触发一个事件来记录登录事件和登录ip&lt;/p&gt;
+
+&lt;h5 id="已经登录-访问登录页面的自动跳转"&gt;已经登录 访问登录页面的自动跳转&lt;/h5&gt;
+
+&lt;p&gt;如果已经登录了 再访问登录页面 显然我们不需要再出现登录视图让其登录，我们需要将其跳转到其他路径，这个路径依然是可以修改的&lt;/p&gt;
+
+&lt;p&gt;首先我们看看再Auth控制器中哪里对是否已经登录进行判断&lt;/p&gt;
+&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
+  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;__construct&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;Guard&lt;/span&gt; &lt;span class="nv"&gt;$auth&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nx"&gt;Registrar&lt;/span&gt; &lt;span class="nv"&gt;$registrar&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+  &lt;span class="p"&gt;{&lt;/span&gt;
+
+
+    &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;auth&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$auth&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;registrar&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$registrar&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+    &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;middleware&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'guest'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'except'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'getLogout'&lt;/span&gt;&lt;span class="p"&gt;]);&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;其中这个except表示getLogout这个方法将不会受到这个中间件的影响 getLogout通常是登出方法&lt;/p&gt;
+
+&lt;p&gt;在这个控制器的构造方法调用了一个中间件来对是否已经登录进行判断 ，通过查找kernel.php我们找到这个中间件&lt;br&gt;
+是App\Http\Middleware\RedirectIfAuthenticated.php&lt;/p&gt;
+&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
+  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;handle&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nx"&gt;Closure&lt;/span&gt; &lt;span class="nv"&gt;$next&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+  &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;auth&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;check&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+    &lt;span class="p"&gt;{&lt;/span&gt;
+                     &lt;span class="c1"&gt;//跳转的路径
+&lt;/span&gt;      &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nx"&gt;RedirectResponse&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;url&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'/'&lt;/span&gt;&lt;span class="p"&gt;));&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;$next&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;只要修改了上面代码中跳转的路径就可以了&lt;/p&gt;
+
+&lt;h3 id="总结"&gt;总结&lt;/h3&gt;
+
+&lt;p&gt;我们可以看到 laravel已经给我们封装了很多登录相关需要用到的功能 ，非常的完善，但也给了我们很大的自由随意去修改登录相关的流程，我们可以随意根据需要业务逻辑修改登录的功能。&lt;/p&gt;
+</content>
+  </entry>
   <entry>
     <title>使用passenger在Centos7部署nginx+Ruby on Rails</title>
     <link rel="alternate" href="http://blog.example.com/2015/06/16/deploy-rails-nginx/"/>

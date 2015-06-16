@@ -1,0 +1,180 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><meta content="initial-scale=1.0, user-scalable=no" name="viewport" /><title>Laravel(2) 登录重写 | gameFu's Blog</title><meta description="laravel 登录重写  权限控制是几乎每套成熟系统不可缺少的一部分，我们使用的权限控制方法是rbac，我将在这个系列的文章一步步完成一个比较复杂的rbac权限控制。  rbac权限控制是一个非常成熟的权限控制系统，其原理是给每个用户一个或多个角色 而每个角色对系统相应模块有访问权限,具体理论知识不多介绍。在我完成这个权限控制系统中，我将普通用户和管理员用户分开在数据库中存储，我们先完成普通用户的登录，这一部分相对于管理员用户会比较简单，同时也让大家理解下登录的流程。  未登录用户跳转到..." /><link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" /><link href="../../../../stylesheets/all-d495412b.css" rel="stylesheet" type="text/css" /><link href="../../../../images/favicon-6c3f3d04.png" rel="icon" type="image/png" /></head><body><header><div id="top-menu"><div class="top-menu-wrapper"><div class="top-menu-list"><ul><li><a href="/">Home</a></li><li><a href="/archives/">Archives</a></li><li><a href="/tags/">Tags</a></li><li><a href="/by-year/">By Year</a></li></ul></div><div class="feed"><a href="/feed.xml"><i class="fa fa-rss-square"></i></a></div></div></div><h1 class="logo"><a href="/" title="gameFu's Blog"><span class="logo-text">gameFu's Blog</span></a></h1></header><main><article><h1 class="article-title">Laravel(2) 登录重写</h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">June 16, 2015</span></div><div class="tag-labels"><a href="/tags/laravel/"><small class="tag-label">laravel</small></a><a href="/tags/php/"><small class="tag-label">php</small></a></div><hr class="article-header-separator" /><h3 id="laravel-登录重写">laravel 登录重写</h3>
+
+<p>权限控制是几乎每套成熟系统不可缺少的一部分，我们使用的权限控制方法是rbac，我将在这个系列的文章一步步完成一个比较复杂的rbac权限控制。</p>
+
+<p>rbac权限控制是一个非常成熟的权限控制系统，其原理是给每个用户一个或多个角色 而每个角色对系统相应模块有访问权限,具体理论知识不多介绍。在我完成这个权限控制系统中，我将普通用户和管理员用户分开在数据库中存储，我们先完成普通用户的登录，这一部分相对于管理员用户会比较简单，同时也让大家理解下登录的流程。</p>
+
+<h5 id="未登录用户跳转到登录页面">未登录用户跳转到登录页面</h5>
+
+<p>当我们访问某些一定要登录后才能使用的功能时 我们往往会有一个功能就是 如果没有登录的用户，就会直接跳转到登录功能 在laravel已经提供的代码中我们可以非常轻松完成这个功能</p>
+<pre class="highlight php"><code><span class="cp">&lt;?php</span>
+<span class="k">class</span> <span class="nc">HomeController</span> <span class="k">extends</span> <span class="nx">Controller</span> <span class="p">{</span>
+  <span class="k">public</span> <span class="k">function</span> <span class="nf">__construct</span><span class="p">()</span>
+  <span class="p">{</span>
+    <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">middleware</span><span class="p">(</span><span class="s1">'auth'</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="k">public</span> <span class="k">function</span> <span class="nf">index</span><span class="p">()</span>
+  <span class="p">{</span>
+    <span class="k">echo</span> <span class="nx">url</span><span class="p">(</span><span class="s1">'/home'</span><span class="p">);</span>
+    <span class="k">echo</span> <span class="s1">'这是首页'</span><span class="p">;</span>
+
+  <span class="p">}</span>
+
+<span class="p">}</span>
+</code></pre>
+
+<p>我们在随便一个需要进行登录才能使用的控制器中使调用auth这个控制器就可以了，这个控制器会去检查session中是否有登录信息来进行判断是否有没有登录 那么这个&#39;auth&#39;中间件在哪呢？</p>
+
+<p>laravel中所有中间件都在app/Http/Kernel中注册</p>
+<pre class="highlight php"><code><span class="cp">&lt;?php</span>
+  <span class="k">protected</span> <span class="nv">$routeMiddleware</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">'auth'</span> <span class="o">=&gt;</span> <span class="s1">'App\Http\Middleware\Authenticate'</span><span class="p">,</span>
+    <span class="s1">'auth.basic'</span> <span class="o">=&gt;</span> <span class="s1">'Illuminate\Auth\Middleware\AuthenticateWithBasicAuth'</span><span class="p">,</span>
+    <span class="s1">'guest'</span> <span class="o">=&gt;</span> <span class="s1">'App\Http\Middleware\RedirectIfAuthenticated'</span><span class="p">,</span>
+    <span class="s1">'admin_auth'</span> <span class="o">=&gt;</span> <span class="s1">'App\Http\Middleware\AdminPermissionCheck'</span><span class="p">,</span>
+  <span class="p">];</span>
+
+</code></pre>
+
+<p>这个数组中key是中间件的别名 value是中间件的路径 由此我们可以找到别名为auth的中间件</p>
+
+<p>找到App\Http\Middleware\Authenticate</p>
+<pre class="highlight php"><code><span class="cp">&lt;?php</span>
+  <span class="k">public</span> <span class="k">function</span> <span class="nf">handle</span><span class="p">(</span><span class="nv">$request</span><span class="p">,</span> <span class="nx">Closure</span> <span class="nv">$next</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nv">$this</span><span class="o">-&gt;</span><span class="na">auth</span><span class="o">-&gt;</span><span class="na">guest</span><span class="p">())</span>
+    <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nv">$request</span><span class="o">-&gt;</span><span class="na">ajax</span><span class="p">())</span>
+      <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">response</span><span class="p">(</span><span class="s1">'Unauthorized.'</span><span class="p">,</span> <span class="mi">401</span><span class="p">);</span>
+      <span class="p">}</span>
+      <span class="k">else</span>
+      <span class="p">{</span>
+        <span class="c1">//这个方法会跳转到Auth控制器的getLogin方法 
+</span>                <span class="c1">//如果没有 那么会自动跳转的视图文件夹下的auth login
+</span>        <span class="k">return</span> <span class="nx">redirect</span><span class="p">()</span><span class="o">-&gt;</span><span class="na">guest</span><span class="p">(</span><span class="s1">'auth/login'</span><span class="p">);</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="nv">$next</span><span class="p">(</span><span class="nv">$request</span><span class="p">);</span>
+  <span class="p">}</span>
+</code></pre>
+
+<p>handle方法是调用中间件时调用的方法  其中guest是判断有没有登录的方法 这里我们最有可能需要改的地方就是如果没有登录跳转的方法  如上面代码所示 跳转的路径为auth/login（这个路径已经在路由中配好，跳转到Auth控制器中得getLogin方法）</p>
+
+<h5 id="建立一个登录视图">建立一个登录视图</h5>
+
+<p>在AuthController中建立一个登录视图</p>
+<pre class="highlight php"><code><span class="cp">&lt;?php</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="nf">getLogin</span><span class="p">(){</span>
+        <span class="k">return</span> <span class="nx">view</span><span class="p">(</span><span class="s2">"auth.login"</span><span class="p">);</span>
+  <span class="p">}</span>
+
+</code></pre>
+
+<h5 id="表单数据验证">表单数据验证</h5>
+
+<p>表单数据验证在实现部分是postLogin方法中的 UserLoginRequest $req<br>
+我们建立一个请求类来对表单进行数据验证 使用laravel 提供的php artsian make:request 能非常轻松的建立一个请求类</p>
+<pre class="highlight php"><code><span class="cp">&lt;?php</span>
+<span class="k">class</span> <span class="nc">UserLoginRequest</span> <span class="k">extends</span> <span class="nx">Request</span> <span class="p">{</span>
+
+  <span class="sd">/**
+   * Determine if the user is authorized to make this request.
+   *
+   * @return bool
+   */</span>
+  <span class="k">public</span> <span class="k">function</span> <span class="nf">authorize</span><span class="p">()</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="sd">/**
+   * Get the validation rules that apply to the request.
+   *
+   * @return array
+   */</span>
+  <span class="k">public</span> <span class="k">function</span> <span class="nf">rules</span><span class="p">()</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span>
+      <span class="c1">//再这里对表单提交字段进行过滤
+</span>      <span class="s1">'identity'</span> <span class="o">=&gt;</span> <span class="s1">'required|min:3|max:16'</span><span class="p">,</span>
+      <span class="s1">'password'</span> <span class="o">=&gt;</span> <span class="s1">'required|min:6|max:16'</span>
+    <span class="p">];</span>
+  <span class="p">}</span>
+
+  <span class="k">public</span> <span class="k">function</span> <span class="nf">sanitize</span><span class="p">()</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">all</span><span class="p">();</span>
+  <span class="p">}</span>
+
+<span class="p">}</span>
+
+</code></pre>
+
+<h5 id="登录处理方法">登录处理方法</h5>
+<pre class="highlight php"><code><span class="cp">&lt;?php</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="nf">postLogin</span><span class="p">(</span><span class="nx">UserLoginRequest</span> <span class="nv">$req</span><span class="p">){</span>
+
+   <span class="c1">//这里对传递过来得字段进行了处理 这个函数为我自己定义的函数 仅仅是为了演示用
+</span>     <span class="nv">$identity</span> <span class="o">=</span> <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">generateLoginIdentity</span><span class="p">(</span><span class="nv">$req</span><span class="o">-&gt;</span><span class="na">input</span><span class="p">());</span>
+     <span class="nv">$identity</span><span class="p">[</span><span class="s1">'password'</span><span class="p">]</span> <span class="o">=</span> <span class="nv">$req</span><span class="o">-&gt;</span><span class="na">input</span><span class="p">(</span><span class="s1">'password'</span><span class="p">);</span>
+    <span class="c1">//验证用户账号密码
+</span>    <span class="k">if</span><span class="p">(</span><span class="nv">$this</span><span class="o">-&gt;</span><span class="na">auth</span><span class="o">-&gt;</span><span class="na">attempt</span><span class="p">(</span><span class="nv">$indentity</span><span class="p">)){</span>
+      <span class="c1">//登录成功 记录用户登录时间和登录ip
+</span>      <span class="nv">$user</span> <span class="o">=</span> <span class="nx">User</span><span class="o">::</span><span class="na">where</span><span class="p">(</span><span class="s1">'id'</span><span class="p">,</span><span class="s1">'='</span><span class="p">,</span><span class="nv">$this</span><span class="o">-&gt;</span><span class="na">auth</span><span class="o">-&gt;</span><span class="na">user</span><span class="p">()</span><span class="o">-&gt;</span><span class="na">id</span><span class="p">)</span><span class="o">-&gt;</span><span class="na">first</span><span class="p">();</span>
+      <span class="c1">// 触发一个事件
+</span>      <span class="nx">event</span><span class="p">(</span><span class="k">new</span> <span class="nx">\App\Events\UserLogin</span><span class="p">(</span><span class="nv">$user</span><span class="p">,</span><span class="nv">$req</span><span class="o">-&gt;</span><span class="na">ip</span><span class="p">()));</span>
+      <span class="c1">//重定向到想要访问的页面
+</span>      <span class="k">return</span> <span class="nx">redirect</span><span class="p">()</span><span class="o">-&gt;</span><span class="na">intended</span><span class="p">(</span><span class="s1">'/'</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+</code></pre>
+
+<p>如上述代码所示 你可以对传过来得数据根据业务需要做进一步的处理</p>
+
+<p>验证登录用户功能的代码是这一段$this-&gt;auth-&gt;attempt($indentity) 如果验证成功回返回true，这个函数是laravel自带Auth的一个方法 功能是去User表中匹配传过来的字段，如果需要验证更多字段,当验证成功后会将登录信息存入session中。当然Auth去查找匹配的表是可以更改的，我会在后面实现管理员用户的登录功能的时候演示怎么修改。</p>
+
+<p>然后可以在下面的代码中继续完成你的业务逻辑  如我代码中所示的触发一个事件来记录登录事件和登录ip</p>
+
+<h5 id="已经登录-访问登录页面的自动跳转">已经登录 访问登录页面的自动跳转</h5>
+
+<p>如果已经登录了 再访问登录页面 显然我们不需要再出现登录视图让其登录，我们需要将其跳转到其他路径，这个路径依然是可以修改的</p>
+
+<p>首先我们看看再Auth控制器中哪里对是否已经登录进行判断</p>
+<pre class="highlight php"><code><span class="cp">&lt;?php</span>
+  <span class="k">public</span> <span class="k">function</span> <span class="nf">__construct</span><span class="p">(</span><span class="nx">Guard</span> <span class="nv">$auth</span><span class="p">,</span> <span class="nx">Registrar</span> <span class="nv">$registrar</span><span class="p">)</span>
+  <span class="p">{</span>
+
+
+    <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">auth</span> <span class="o">=</span> <span class="nv">$auth</span><span class="p">;</span>
+    <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">registrar</span> <span class="o">=</span> <span class="nv">$registrar</span><span class="p">;</span>
+
+    <span class="nv">$this</span><span class="o">-&gt;</span><span class="na">middleware</span><span class="p">(</span><span class="s1">'guest'</span><span class="p">,</span> <span class="p">[</span><span class="s1">'except'</span> <span class="o">=&gt;</span> <span class="s1">'getLogout'</span><span class="p">]);</span>
+  <span class="p">}</span>
+</code></pre>
+
+<p>其中这个except表示getLogout这个方法将不会受到这个中间件的影响 getLogout通常是登出方法</p>
+
+<p>在这个控制器的构造方法调用了一个中间件来对是否已经登录进行判断 ，通过查找kernel.php我们找到这个中间件<br>
+是App\Http\Middleware\RedirectIfAuthenticated.php</p>
+<pre class="highlight php"><code><span class="cp">&lt;?php</span>
+  <span class="k">public</span> <span class="k">function</span> <span class="nf">handle</span><span class="p">(</span><span class="nv">$request</span><span class="p">,</span> <span class="nx">Closure</span> <span class="nv">$next</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nv">$this</span><span class="o">-&gt;</span><span class="na">auth</span><span class="o">-&gt;</span><span class="na">check</span><span class="p">())</span>
+    <span class="p">{</span>
+                     <span class="c1">//跳转的路径
+</span>      <span class="k">return</span> <span class="k">new</span> <span class="nx">RedirectResponse</span><span class="p">(</span><span class="nx">url</span><span class="p">(</span><span class="s1">'/'</span><span class="p">));</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="nv">$next</span><span class="p">(</span><span class="nv">$request</span><span class="p">);</span>
+  <span class="p">}</span>
+</code></pre>
+
+<p>只要修改了上面代码中跳转的路径就可以了</p>
+
+<h3 id="总结">总结</h3>
+
+<p>我们可以看到 laravel已经给我们封装了很多登录相关需要用到的功能 ，非常的完善，但也给了我们很大的自由随意去修改登录相关的流程，我们可以随意根据需要业务逻辑修改登录的功能。</p>
+<div class="social"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2015 <a href="/">gameFu's Blog</a> - Site Author</div></div></footer></body></html>
