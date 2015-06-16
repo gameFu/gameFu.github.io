@@ -4,10 +4,203 @@
   <id>http://blog.example.com</id>
   <link href="http://blog.example.com"/>
   <link href="http://blog.example.com/feed.xml" rel="self"/>
-  <updated>2015-06-15T22:57:00+08:00</updated>
+  <updated>2015-06-16T15:45:00+08:00</updated>
   <author>
     <name>Site Author</name>
   </author>
+  <entry>
+    <title>使用passenger在Centos7部署nginx+Ruby on Rails</title>
+    <link rel="alternate" href="http://blog.example.com/2015/06/16/deploy-rails-nginx/"/>
+    <id>http://blog.example.com/2015/06/16/deploy-rails-nginx/</id>
+    <published>2015-06-16T15:45:00+08:00</published>
+    <updated>2015-06-16T18:09:50+08:00</updated>
+    <summary type="html">&lt;h2 id="passenger"&gt;passenger&lt;/h2&gt;
+
+&lt;p&gt;&lt;code&gt;passenger&lt;/code&gt;是一个能快速搭建web环境的工具，它能快速的将&lt;code&gt;nginx&lt;/code&gt;和&lt;code&gt;passenger&lt;/code&gt;部署到你的服务器中，是部署&lt;code&gt;ruby&lt;/code&gt;环境就如同php环境那样简单快速，让人愉悦。下面我将使用这个工具将一个几乎空白的web服务器打造成一个高效的ruby服务器&lt;/p&gt;
+
+&lt;h2 id="centos7"&gt;centos7&lt;/h2&gt;
+
+&lt;p&gt;&lt;code&gt;centos7&lt;/code&gt;是最新的centos版本带来了一系列新特性，包括对Docker的支持和性能的提高，&lt;a href="http://www.flexense.com/centos6_vs_centos7_nas_performance.html"&gt;centos 6和 centos 7性能对比&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id="安装ruby环境"&gt;安装ruby环境&lt;/h2&gt;
+
+&lt;p&gt;首先下载&lt;code&gt;rvm&lt;/code&gt;(ruby虚拟机)&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;curl...&lt;/code&gt;&lt;/pre&gt;</summary>
+    <content type="html">&lt;h2 id="passenger"&gt;passenger&lt;/h2&gt;
+
+&lt;p&gt;&lt;code&gt;passenger&lt;/code&gt;是一个能快速搭建web环境的工具，它能快速的将&lt;code&gt;nginx&lt;/code&gt;和&lt;code&gt;passenger&lt;/code&gt;部署到你的服务器中，是部署&lt;code&gt;ruby&lt;/code&gt;环境就如同php环境那样简单快速，让人愉悦。下面我将使用这个工具将一个几乎空白的web服务器打造成一个高效的ruby服务器&lt;/p&gt;
+
+&lt;h2 id="centos7"&gt;centos7&lt;/h2&gt;
+
+&lt;p&gt;&lt;code&gt;centos7&lt;/code&gt;是最新的centos版本带来了一系列新特性，包括对Docker的支持和性能的提高，&lt;a href="http://www.flexense.com/centos6_vs_centos7_nas_performance.html"&gt;centos 6和 centos 7性能对比&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id="安装ruby环境"&gt;安装ruby环境&lt;/h2&gt;
+
+&lt;p&gt;首先下载&lt;code&gt;rvm&lt;/code&gt;(ruby虚拟机)&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;curl -L get.rvm.io | bash -s stable
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;安装&lt;code&gt;rvm&lt;/code&gt;&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;&lt;span class="nb"&gt;source&lt;/span&gt; /etc/profile.d/rvm.sh
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;安装&lt;code&gt;ruby&lt;/code&gt;(请选择官网上最新的版本，使用&lt;code&gt;ruby&lt;/code&gt;就要一直坚定的使用其最新版本)&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;rvm install 2.2.1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;安装完成后只要运行&lt;code&gt;ruby -v&lt;/code&gt;有显示版本号就证明已经安装成功了&lt;/p&gt;
+
+&lt;h2 id="安装passenger-和-nginx"&gt;安装Passenger 和 Nginx&lt;/h2&gt;
+
+&lt;p&gt;首先使用&lt;code&gt;gem&lt;/code&gt;安装&lt;code&gt;passenger&lt;/code&gt;&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;gem install passenger
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;由于&lt;code&gt;nginx&lt;/code&gt;不支持动态的模块载入，所以要使用&lt;code&gt;passenger&lt;/code&gt;来进行编译安装由&lt;code&gt;passenger&lt;/code&gt;修改过的&lt;code&gt;nginx&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;接下来安装&lt;code&gt;nginx&lt;/code&gt;+&lt;code&gt;passenger&lt;/code&gt;&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;passenger-install-nginx-module
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;运行了这个命令后，按照提示一步步安装&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;1.Yes: download, compile and install Nginx for me. (recommended)
+The easiest way to get started. A stock Nginx 1.0.10 with Passenger
+support, but with no other additional third party modules, will be
+installed for you to a directory of your choice.
+
+2.No: I want to customize my Nginx installation. (for advanced users)
+Choose this if you want to compile Nginx with more third party modules
+besides Passenger, or if you need to pass additional options to Nginx's
+'configure' script. This installer will 1) ask you for the location of
+the Nginx source code, 2) run the 'configure' script according to your
+instructions, and 3) run 'make install'.
+Whichever you choose, if you already have an existing Nginx configuration file,
+then it will be preserved.
+
+Enter your choice (1 or 2) or press Ctrl-C to abort:
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;当遇到这个选择时，建议选择1，1代表自动完整安装并配置nginx,2是代表根据自己需求定制nginx.&lt;/p&gt;
+
+&lt;p&gt;安装完成后系统会提示，&lt;code&gt;nginx&lt;/code&gt;安装的目录，在&lt;code&gt;centos7&lt;/code&gt;下默认是安装在&lt;code&gt;/opt/nginx&lt;/code&gt;下,配置文件是默认在&lt;code&gt;/opt/nginx/conf/nginx.conf&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;打开&lt;code&gt;nginx.conf&lt;/code&gt;我们可以看到，&lt;code&gt;passenger&lt;/code&gt;已经在&lt;code&gt;nginx&lt;/code&gt;的配置文件上做了一点小配置&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;passenger_root /usr/local/rvm/gems/ruby-2.2.1/gems/passenger-5.0.10;
+passenger_ruby /usr/local/rvm/gems/ruby-2.2.1/wrappers/ruby;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id="安装rails并初始化一个rails项目"&gt;安装rails并初始化一个rails项目&lt;/h2&gt;
+
+&lt;p&gt;使用&lt;code&gt;gem&lt;/code&gt;安装&lt;code&gt;rails&lt;/code&gt;&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;gem install rails
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;初始化一个&lt;code&gt;rails&lt;/code&gt;项目&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;rails new sample_app
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;第一次初始化&lt;code&gt;rails&lt;/code&gt;时一般会报出缺少&lt;code&gt;gem&lt;/code&gt;的警告，此时只需要将&lt;code&gt;rails&lt;/code&gt;的镜像改为淘宝镜像，详见&lt;a href="http://ruby.taobao.org"&gt;http://ruby.taobao.org&lt;/a&gt;,然后执行&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;bundle install
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;当执行完毕后，一个&lt;code&gt;rails&lt;/code&gt;项目的初始化就完成了&lt;/p&gt;
+
+&lt;h2 id="配置nginx"&gt;配置nginx&lt;/h2&gt;
+
+&lt;p&gt;打开配置文件&lt;br&gt;
+&lt;code&gt;&lt;br&gt;
+vim /opt/nginx/conf/nginx.conf&lt;br&gt;
+&lt;/code&gt;&lt;br&gt;
+这里给出一份最简单能运行的&lt;code&gt;nginx.conf&lt;/code&gt;（注意：rails项目的目录是/opt/www）&lt;/p&gt;
+&lt;pre class="highlight nginx"&gt;&lt;code&gt;&lt;span class="err"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;worker_processes&lt;/span&gt;  &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+  &lt;span class="k"&gt;events&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+      &lt;span class="kn"&gt;worker_connections&lt;/span&gt;  &lt;span class="mi"&gt;1024&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+
+
+  &lt;span class="k"&gt;http&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+      &lt;span class="kn"&gt;passenger_root&lt;/span&gt; &lt;span class="n"&gt;/usr/local/rvm/gems/ruby-2.2.1/gems/passenger-5.0.10&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+      &lt;span class="kn"&gt;passenger_ruby&lt;/span&gt; &lt;span class="n"&gt;/usr/local/rvm/gems/ruby-2.2.1/wrappers/ruby&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+      &lt;span class="kn"&gt;include&lt;/span&gt;       &lt;span class="s"&gt;mime.types&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+      &lt;span class="kn"&gt;default_type&lt;/span&gt;  &lt;span class="nc"&gt;application/octet-stream&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+      &lt;span class="kn"&gt;sendfile&lt;/span&gt;        &lt;span class="no"&gt;on&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+      &lt;span class="kn"&gt;keepalive_timeout&lt;/span&gt;  &lt;span class="mi"&gt;65&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+      &lt;span class="kn"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+          &lt;span class="c1"&gt;#监听的端口
+&lt;/span&gt;          &lt;span class="kn"&gt;listen&lt;/span&gt;       &lt;span class="mi"&gt;8080&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+          &lt;span class="kn"&gt;server_name&lt;/span&gt;  &lt;span class="mi"&gt;127&lt;/span&gt;&lt;span class="s"&gt;.0.0.1&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+          &lt;span class="c1"&gt;#web根目录，一定是rails项目下的public
+&lt;/span&gt;          &lt;span class="kn"&gt;root&lt;/span&gt; &lt;span class="n"&gt;/var/www/sample_app/public/&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+          &lt;span class="c1"&gt;#一定要记得将这个选项设置为on
+&lt;/span&gt;          &lt;span class="kn"&gt;passenger_enabled&lt;/span&gt; &lt;span class="no"&gt;on&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+      &lt;span class="p"&gt;}&lt;/span&gt;    
+  &lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;运行&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;sbin/nginx -t
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;如果没有报错，那说明配置成功了。那么已经万事大吉了吗？并没有！！&lt;/p&gt;
+
+&lt;h2 id="配置centos7防火墙"&gt;配置Centos7防火墙&lt;/h2&gt;
+
+&lt;p&gt;&lt;code&gt;Centos7&lt;/code&gt;后已经废弃了原来的&lt;code&gt;iptables&lt;/code&gt;，改而使用&lt;code&gt;firewall&lt;/code&gt;，默认情况下&lt;code&gt;centos7&lt;/code&gt;系统不允许任何外来访问，就算你把&lt;code&gt;firewall&lt;/code&gt;关了也没用，所以必须配置firewall&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;firewall-cmd --zone&lt;span class="o"&gt;=&lt;/span&gt;public --add-port&lt;span class="o"&gt;=&lt;/span&gt;8080/tcp --permanent
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这个命令表示，允许外部访问8080端口，重载一下&lt;code&gt;firewall&lt;/code&gt;的配置，就外部就能访问服务器的8080端口了&lt;/p&gt;
+
+&lt;h2 id="配置rails的生产环境"&gt;配置Rails的生产环境&lt;/h2&gt;
+
+&lt;p&gt;配置完&lt;code&gt;Centos7&lt;/code&gt;的防火墙后，访问&lt;code&gt;rails&lt;/code&gt;程序时就会报出一个403的forbidden错误，仔细查看日志后，发现了问题了的原因&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;App 6361 stderr: [ 2015-06-16 11:27:24.1412 6376/0x00000001d35760(Worker 1) utils.rb:85 ]: *** Exception RuntimeError in Rack application object (Missing `secret_token` and `secret_key_base` for 'production' environment, set these values in `config/secrets.yml`) (process 6376, thread 0x00000001d35760(Worker 1)):
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这个错误表示&lt;code&gt;Rails&lt;/code&gt;生产环境下的密钥没有配置。在&lt;code&gt;nginx&lt;/code&gt;上跑&lt;code&gt;rails&lt;/code&gt;一般只有在生产环境下才会使用，因而&lt;code&gt;passenger&lt;/code&gt;默认下就是&lt;code&gt;rails&lt;/code&gt;环境设置为生产环境，而&lt;code&gt;rails&lt;/code&gt;初始化时默认没有对生产环境进行密钥配置。这时就需要我们自己去配置&lt;code&gt;rails&lt;/code&gt;的密钥了&lt;/p&gt;
+
+&lt;p&gt;在&lt;code&gt;rails&lt;/code&gt;的&lt;code&gt;Gemfile&lt;/code&gt;中加入&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="n"&gt;gem&lt;/span&gt; &lt;span class="s1"&gt;'dotenv-rails'&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;然后运行&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;bundle install
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;安装完这个&lt;code&gt;gem&lt;/code&gt;后就可以配置我们的生产环境密钥了&lt;/p&gt;
+
+&lt;p&gt;首先在&lt;code&gt;sample_app&lt;/code&gt;目录下建立一个&lt;code&gt;.env&lt;/code&gt;文件&lt;/p&gt;
+
+&lt;p&gt;然后运行&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;rake secret 
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这个命令会随机生成一个安全密钥，将这个密钥复制下来，然后在&lt;code&gt;.env&lt;/code&gt;中添加&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="no"&gt;SECRET_KEY_BASE&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="err"&gt;你的密钥&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;最后修改sample_app目录下的config/secrets.yml &lt;/p&gt;
+&lt;pre class="highlight yaml"&gt;&lt;code&gt;
+&lt;span class="s"&gt;development&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+  &lt;span class="s"&gt;secret_key_base&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;lt;%= ENV["SECRET_KEY_BASE"] %&amp;gt;&lt;/span&gt;
+
+&lt;span class="s"&gt;test&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+   &lt;span class="s"&gt;secret_key_base&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;lt;%= ENV["SECRET_KEY_BASE"] %&amp;gt;&lt;/span&gt;
+
+&lt;span class="s"&gt;production&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+  &lt;span class="s"&gt;secret_key_base&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;lt;%= ENV["SECRET_KEY_BASE"] %&amp;gt;&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这样一来密钥配置就完成了，重启&lt;code&gt;nginx&lt;/code&gt;就能成功访问到&lt;code&gt;rails&lt;/code&gt;项目了&lt;/p&gt;
+</content>
+  </entry>
   <entry>
     <title>centos7 服务器部署ssh证书授权登录</title>
     <link rel="alternate" href="http://blog.example.com/2015/06/15/centos7-deploy-ssh/"/>
