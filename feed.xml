@@ -13,7 +13,7 @@
     <link rel="alternate" href="http://blog.example.com/2015/06/18/rails-nginx-mina-puma/"/>
     <id>http://blog.example.com/2015/06/18/rails-nginx-mina-puma/</id>
     <published>2015-06-18T22:43:00+08:00</published>
-    <updated>2015-06-19T00:44:40+08:00</updated>
+    <updated>2015-06-19T00:46:25+08:00</updated>
     <summary type="html">&lt;h2 id="搭建工具介绍"&gt;搭建工具介绍&lt;/h2&gt;
 
 &lt;p&gt;&lt;code&gt;Ruby on Rails&lt;/code&gt;作为一款十分优秀的web开发框架，在当前web领域中慢慢占据了越来越重要，秉承rails快速开发的特点，很多快速部署rails的方案也越来越多。这篇文章中所选的方案是我个人认为十分优秀的部署方案。这套部署方案的结构是，&lt;code&gt;nginx&lt;/code&gt;作为反向代理服务器负责负载均衡，&lt;code&gt;mina&lt;/code&gt;作为自动化部署工具，&lt;code&gt;puma&lt;/code&gt;作为rails的web服务器&lt;/p&gt;
