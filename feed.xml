@@ -4,10 +4,290 @@
   <id>http://blog.example.com</id>
   <link href="http://blog.example.com"/>
   <link href="http://blog.example.com/feed.xml" rel="self"/>
-  <updated>2015-06-17T00:06:00+08:00</updated>
+  <updated>2015-06-18T22:43:00+08:00</updated>
   <author>
     <name>Site Author</name>
   </author>
+  <entry>
+    <title>Ruby on Rails 终极部署方案 nginx+mina+puma</title>
+    <link rel="alternate" href="http://blog.example.com/2015/06/18/rails-nginx-mina-puma/"/>
+    <id>http://blog.example.com/2015/06/18/rails-nginx-mina-puma/</id>
+    <published>2015-06-18T22:43:00+08:00</published>
+    <updated>2015-06-19T00:44:40+08:00</updated>
+    <summary type="html">&lt;h2 id="搭建工具介绍"&gt;搭建工具介绍&lt;/h2&gt;
+
+&lt;p&gt;&lt;code&gt;Ruby on Rails&lt;/code&gt;作为一款十分优秀的web开发框架，在当前web领域中慢慢占据了越来越重要，秉承rails快速开发的特点，很多快速部署rails的方案也越来越多。这篇文章中所选的方案是我个人认为十分优秀的部署方案。这套部署方案的结构是，&lt;code&gt;nginx&lt;/code&gt;作为反向代理服务器负责负载均衡，&lt;code&gt;mina&lt;/code&gt;作为自动化部署工具，&lt;code&gt;puma&lt;/code&gt;作为rails的web服务器&lt;/p&gt;
+
+&lt;h3 id="nginx"&gt;nginx&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;nginx&lt;/code&gt;是一款优秀的代理服务器，其高效的性能已经得到了业界的广泛认可，相信作为web开发人员不会没听说过他的...&lt;/p&gt;</summary>
+    <content type="html">&lt;h2 id="搭建工具介绍"&gt;搭建工具介绍&lt;/h2&gt;
+
+&lt;p&gt;&lt;code&gt;Ruby on Rails&lt;/code&gt;作为一款十分优秀的web开发框架，在当前web领域中慢慢占据了越来越重要，秉承rails快速开发的特点，很多快速部署rails的方案也越来越多。这篇文章中所选的方案是我个人认为十分优秀的部署方案。这套部署方案的结构是，&lt;code&gt;nginx&lt;/code&gt;作为反向代理服务器负责负载均衡，&lt;code&gt;mina&lt;/code&gt;作为自动化部署工具，&lt;code&gt;puma&lt;/code&gt;作为rails的web服务器&lt;/p&gt;
+
+&lt;h3 id="nginx"&gt;nginx&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;nginx&lt;/code&gt;是一款优秀的代理服务器，其高效的性能已经得到了业界的广泛认可，相信作为web开发人员不会没听说过他的大名&lt;/p&gt;
+
+&lt;h3 id="mina"&gt;mina&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;mina&lt;/code&gt;是一款由ruby开发的自动化部署工具，其目的是为了简化每次rails代码提交时的部署，一键完成部署，杜绝了提交到git服务器后，又去服务器上git pull的情况&lt;/p&gt;
+
+&lt;h3 id="puma"&gt;puma&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;puma&lt;/code&gt;是一款专门针对rails的并发服务器，相对于&lt;code&gt;passenger&lt;/code&gt;，&lt;code&gt;puma&lt;/code&gt;可配置面更广，而且性能比&lt;code&gt;passenger&lt;/code&gt;更高，是rails web服务器的不二之选&lt;/p&gt;
+
+&lt;h2 id="部署前言"&gt;部署前言&lt;/h2&gt;
+
+&lt;p&gt;由于这篇文章需要很多铺垫，包括rails的安装下载,git的配置等等，需要读者自己去查阅资料或者查阅之前我写过的一些文章，如果期间有什么问题，请留言。。&lt;/p&gt;
+
+&lt;h2 id="mina"&gt;mina&lt;/h2&gt;
+
+&lt;p&gt;首先在你的rails项目的&lt;code&gt;Gemfile&lt;/code&gt;中加上&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="n"&gt;gem&lt;/span&gt; &lt;span class="n"&gt;mina&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;运行&lt;code&gt;bundle&lt;/code&gt; 安装 &lt;code&gt;mina&lt;/code&gt;，接着在你的rails项目根目录初始化&lt;code&gt;mina&lt;/code&gt;&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;mina init
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这是在你项目的config目录下会有一个&lt;code&gt;deploy.rb&lt;/code&gt;，配置&lt;code&gt;deploy.rb&lt;/code&gt;，列出重点部分，每一行的解释会附在代码的注释里&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="c1"&gt;#服务器地址,是使用ssh的方式登录服务器&lt;/span&gt;
+&lt;span class="n"&gt;set&lt;/span&gt; &lt;span class="ss"&gt;:domain&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'root@192.168.0.103'&lt;/span&gt;
+&lt;span class="c1"&gt;#服务器中项目部署位置&lt;/span&gt;
+&lt;span class="n"&gt;set&lt;/span&gt; &lt;span class="ss"&gt;:deploy_to&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'/var/www/ruby_sample'&lt;/span&gt;
+&lt;span class="c1"&gt;#git代码仓库&lt;/span&gt;
+&lt;span class="n"&gt;set&lt;/span&gt; &lt;span class="ss"&gt;:repository&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'https://github.com/gameFu/ruby_sample.git'&lt;/span&gt;
+&lt;span class="c1"&gt;#git分支&lt;/span&gt;
+&lt;span class="n"&gt;set&lt;/span&gt; &lt;span class="ss"&gt;:branch&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'master'&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 中括号里的文件 会出现在服务器项目附录的shared文件夹中，这里加入了secrets.yml，环境密钥无需跟开发计算机一样&lt;/span&gt;
+&lt;span class="n"&gt;set&lt;/span&gt; &lt;span class="ss"&gt;:shared_paths&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'config/database.yml'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'log'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'config/secrets.yml'&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 这个块里面的代码表示运行 mina setup时运行的命令&lt;/span&gt;
+&lt;span class="n"&gt;task&lt;/span&gt; &lt;span class="ss"&gt;:setup&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="ss"&gt;:environment&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# 在服务器项目目录的shared中创建log文件夹&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[mkdir -p "#{deploy_to}/#{shared_path}/log"]&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[chmod g+rx,u+rwx "#{deploy_to}/#{shared_path}/log"]&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# 在服务器项目目录的shared中创建config文件夹 下同&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[mkdir -p "#{deploy_to}/#{shared_path}/config"]&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[chmod g+rx,u+rwx "#{deploy_to}/#{shared_path}/config"]&lt;/span&gt;
+
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/#{shared_path}/config/database.yml"]&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/#{shared_path}/config/secrets.yml"]&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# puma.rb 配置puma必须得文件夹及文件&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[mkdir -p "#{deploy_to}/shared/tmp/pids"]&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[chmod g+rx,u+rwx "#{deploy_to}/shared/tmp/pids"]&lt;/span&gt;
+
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[mkdir -p "#{deploy_to}/shared/tmp/sockets"]&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[chmod g+rx,u+rwx "#{deploy_to}/shared/tmp/sockets"]&lt;/span&gt;
+
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/shared/config/puma.rb"]&lt;/span&gt;
+  &lt;span class="n"&gt;queue&lt;/span&gt;  &lt;span class="sx"&gt;%[echo "-----&amp;gt; Be sure to edit 'shared/config/puma.rb'."]&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# tmp/sockets/puma.state&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/shared/tmp/sockets/puma.state"]&lt;/span&gt;
+  &lt;span class="n"&gt;queue&lt;/span&gt;  &lt;span class="sx"&gt;%[echo "-----&amp;gt; Be sure to edit 'shared/tmp/sockets/puma.state'."]&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# log/puma.stdout.log&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/shared/log/puma.stdout.log"]&lt;/span&gt;
+  &lt;span class="n"&gt;queue&lt;/span&gt;  &lt;span class="sx"&gt;%[echo "-----&amp;gt; Be sure to edit 'shared/log/puma.stdout.log'."]&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# log/puma.stdout.log&lt;/span&gt;
+  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/shared/log/puma.stderr.log"]&lt;/span&gt;
+  &lt;span class="n"&gt;queue&lt;/span&gt;  &lt;span class="sx"&gt;%[echo "-----&amp;gt; Be sure to edit 'shared/log/puma.stderr.log'."]&lt;/span&gt;
+
+  &lt;span class="n"&gt;queue&lt;/span&gt;  &lt;span class="sx"&gt;%[echo "-----&amp;gt; Be sure to edit '#{deploy_to}/#{shared_path}/config/database.yml'."]&lt;/span&gt;
+&lt;span class="k"&gt;end&lt;/span&gt;
+
+&lt;span class="c1"&gt;#这个代码块表示运行 mina deploy时执行的命令&lt;/span&gt;
+&lt;span class="n"&gt;desc&lt;/span&gt; &lt;span class="s2"&gt;"Deploys the current version to the server."&lt;/span&gt;
+&lt;span class="n"&gt;task&lt;/span&gt; &lt;span class="ss"&gt;:deploy&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="ss"&gt;:environment&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
+  &lt;span class="n"&gt;to&lt;/span&gt; &lt;span class="ss"&gt;:before_hook&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+  &lt;span class="n"&gt;deploy&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
+    &lt;span class="c1"&gt;#重新拉git服务器上的最新版本，即使没有改变&lt;/span&gt;
+    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'git:clone'&lt;/span&gt;
+    &lt;span class="c1"&gt;#重新设定shared_path位置&lt;/span&gt;
+    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'deploy:link_shared_paths'&lt;/span&gt;
+    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'bundle:install'&lt;/span&gt;
+    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'rails:db_migrate'&lt;/span&gt;
+    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'rails:assets_precompile'&lt;/span&gt;
+    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'deploy:cleanup'&lt;/span&gt;
+
+    &lt;span class="n"&gt;to&lt;/span&gt; &lt;span class="ss"&gt;:launch&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
+      &lt;span class="n"&gt;queue&lt;/span&gt; &lt;span class="s2"&gt;"mkdir -p &lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;deploy_to&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;current_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/tmp/"&lt;/span&gt;
+      &lt;span class="c1"&gt;# queue "chown -R www-data #{deploy_to}"&lt;/span&gt;
+      &lt;span class="n"&gt;queue&lt;/span&gt; &lt;span class="s2"&gt;"touch &lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;deploy_to&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;current_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/tmp/restart.txt"&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+&lt;span class="k"&gt;end&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这样一来mina的基本配置就完成，接下来只要将你开发环境的项目上传到git服务器，然后运行下面的命令就完成了&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;mina deploy
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;完成部署后，你就可以在指定的服务器目录下看到你的项目，目录结构如下&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;current -当前版本目录也就是项目目录&lt;/li&gt;
+&lt;li&gt;last_version -版本号&lt;/li&gt;
+&lt;li&gt;releases/ -过去的版本&lt;/li&gt;
+&lt;li&gt;scm/&lt;/li&gt;
+&lt;li&gt;shared/ 先前shared_path所设定另外拉出来的文件都在这里&lt;/li&gt;
+&lt;li&gt;tmp/&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;这里需要注意的几点&lt;br&gt;
+1.shared_path里面的文件不仅仅是表示这些文件会在服务器目录中出现在另外的目录里，也表示这些文件或者目录不会受到git版本库的控制，也就是说这些文件的配置必须在你服务器中手动去配置，这两个文件包括database.yml和secrets.yml,在shared/config目录下&lt;br&gt;
+2.针对deploy最好在服务器创建一个使用者，并针对他创建一个ssh authorized_keys,这里直接使用了root身份，参考&lt;a href="http://segmentfault.com/a/1190000002911599"&gt;centos7 服务器部署ssh证书授权登录&lt;/a&gt;，这样做能避免每次部署的时候都需要输入服务器账号密码&lt;/p&gt;
+
+&lt;h3 id="可能会遇到的问题"&gt;可能会遇到的问题&lt;/h3&gt;
+
+&lt;p&gt;由于生产环境一般会搭配类似于&lt;code&gt;postgresql&lt;/code&gt;等成熟数据库，这里我就举出一个搭建&lt;code&gt;postgresql&lt;/code&gt;，首先是启动数据库时（centos 7下），如果遇到问题请使用下面的命令就能看到详细的错误信息&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;systemctl status postgresql-9.4.service -l 
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;然后在跑&lt;code&gt;mina deploy&lt;/code&gt;时可能会报类似于这样的一个错误&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt; Gem::LoadError: Specified 'postgresql' for database adapter, but the gem is not loaded. Add `gem 'pg'` to your Gemfile (and ensure its version is at the minimum required by ActiveRecord).
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;从错误信息上能很明显的看出是因为没有安装pg这个包导致的，但是有一种情况是明明在项目的&lt;code&gt;Gemfile&lt;/code&gt;上写上了pg但还是跑不过，造成这个的原因，可能是由于你的服务器环境缺少了pg的头文件导致的，如果是在centos下，只需要执行下面命令就能解决&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;yum install postgresql-libs
+yum install postgresql-devel
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id="puma"&gt;Puma&lt;/h3&gt;
+
+&lt;p&gt;首先在你的&lt;code&gt;Gemfile&lt;/code&gt;里加上&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="n"&gt;gem&lt;/span&gt; &lt;span class="n"&gt;puma&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;然后在config目录下手动创建一个&lt;code&gt;puma.rb&lt;/code&gt;文件，配置&lt;code&gt;puma.rb&lt;/code&gt;文件&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="c1"&gt;#!/usr/bin/env puma&lt;/span&gt;
+
+&lt;span class="c1"&gt;#rails的运行环境&lt;/span&gt;
+&lt;span class="n"&gt;environment&lt;/span&gt; &lt;span class="s1"&gt;'production'&lt;/span&gt;
+&lt;span class="n"&gt;threads&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;64&lt;/span&gt;
+&lt;span class="n"&gt;workers&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;
+
+&lt;span class="c1"&gt;#项目名&lt;/span&gt;
+&lt;span class="n"&gt;app_name&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;"ruby_sample"&lt;/span&gt;
+&lt;span class="c1"&gt;#项目路径&lt;/span&gt;
+&lt;span class="n"&gt;application_path&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;"/var/www/&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;app_name&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;"&lt;/span&gt;
+&lt;span class="c1"&gt;#这里一定要配置为项目路径下地current&lt;/span&gt;
+&lt;span class="n"&gt;directory&lt;/span&gt; &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/current"&lt;/span&gt;
+
+&lt;span class="c1"&gt;#下面都是 puma的配置项&lt;/span&gt;
+&lt;span class="n"&gt;pidfile&lt;/span&gt; &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/tmp/pids/puma.pid"&lt;/span&gt;
+&lt;span class="n"&gt;state_path&lt;/span&gt; &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/tmp/sockets/puma.state"&lt;/span&gt;
+&lt;span class="n"&gt;stdout_redirect&lt;/span&gt; &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/log/puma.stdout.log"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/log/puma.stderr.log"&lt;/span&gt;
+&lt;span class="n"&gt;bind&lt;/span&gt; &lt;span class="s2"&gt;"unix://&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/tmp/sockets/&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;app_name&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;.sock"&lt;/span&gt;
+&lt;span class="n"&gt;activate_control_app&lt;/span&gt; &lt;span class="s2"&gt;"unix://&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/tmp/sockets/pumactl.sock"&lt;/span&gt;
+
+&lt;span class="c1"&gt;#后台运行&lt;/span&gt;
+&lt;span class="n"&gt;daemonize&lt;/span&gt; &lt;span class="kp"&gt;true&lt;/span&gt;
+&lt;span class="n"&gt;on_restart&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
+  &lt;span class="nb"&gt;puts&lt;/span&gt; &lt;span class="s1"&gt;'On restart...'&lt;/span&gt;
+&lt;span class="k"&gt;end&lt;/span&gt;
+&lt;span class="n"&gt;preload_app!&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里需要注意的地方&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;threads&lt;/code&gt; - &lt;code&gt;puma&lt;/code&gt;的线程数，第一个参数是最小的线程数，第二个参数是最大线程数&lt;/li&gt;
+&lt;li&gt;bind - 这个指定的是&lt;code&gt;puma&lt;/code&gt;运行时产生的&lt;code&gt;socket&lt;/code&gt;，后面&lt;code&gt;nginx&lt;/code&gt;会用到&lt;/li&gt;
+&lt;li&gt;这里所有对应的目录是在&lt;code&gt;deploy&lt;/code&gt;配置中配置的，如果需要更改配置目录，&lt;code&gt;deploy.rb&lt;/code&gt;也需要相应的更改&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id="nginx"&gt;Nginx&lt;/h2&gt;
+
+&lt;p&gt;下载安装&lt;code&gt;nginx&lt;/code&gt;后，打开&lt;code&gt;nginx&lt;/code&gt;的配置文件&lt;code&gt;nginx.conf&lt;/code&gt;进行配置&lt;/p&gt;
+&lt;pre class="highlight nginx"&gt;&lt;code&gt;  &lt;span class="k"&gt;worker_processes&lt;/span&gt;  &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+      &lt;span class="k"&gt;error_log&lt;/span&gt;  &lt;span class="n"&gt;/var/log/nginx/error.log&lt;/span&gt; &lt;span class="s"&gt;warn&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+      &lt;span class="k"&gt;pid&lt;/span&gt;        &lt;span class="n"&gt;/var/run/nginx.pid&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+      &lt;span class="k"&gt;events&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+          &lt;span class="kn"&gt;worker_connections&lt;/span&gt;  &lt;span class="mi"&gt;1024&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+      &lt;span class="p"&gt;}&lt;/span&gt;
+
+      &lt;span class="k"&gt;http&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+          &lt;span class="kn"&gt;include&lt;/span&gt;       &lt;span class="n"&gt;/etc/nginx/mime.types&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+          &lt;span class="kn"&gt;default_type&lt;/span&gt;  &lt;span class="nc"&gt;application/octet-stream&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+          &lt;span class="kn"&gt;log_format&lt;/span&gt;  &lt;span class="s"&gt;main&lt;/span&gt;  &lt;span class="s"&gt;'&lt;/span&gt;&lt;span class="nv"&gt;$remote_addr&lt;/span&gt; &lt;span class="s"&gt;-&lt;/span&gt; &lt;span class="nv"&gt;$remote_user&lt;/span&gt; &lt;span class="s"&gt;[&lt;/span&gt;&lt;span class="nv"&gt;$time_local&lt;/span&gt;&lt;span class="s"&gt;]&lt;/span&gt; &lt;span class="s"&gt;"&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="s"&gt;"&lt;/span&gt; &lt;span class="s"&gt;'&lt;/span&gt;
+                            &lt;span class="s"&gt;'&lt;/span&gt;&lt;span class="nv"&gt;$status&lt;/span&gt; &lt;span class="nv"&gt;$body_bytes_sent&lt;/span&gt; &lt;span class="s"&gt;"&lt;/span&gt;&lt;span class="nv"&gt;$http_referer&lt;/span&gt;&lt;span class="s"&gt;"&lt;/span&gt; &lt;span class="s"&gt;'&lt;/span&gt;
+                            &lt;span class="s"&gt;'"&lt;/span&gt;&lt;span class="nv"&gt;$http_user_agent&lt;/span&gt;&lt;span class="s"&gt;"&lt;/span&gt; &lt;span class="s"&gt;"&lt;/span&gt;&lt;span class="nv"&gt;$http_x_forwarded_for&lt;/span&gt;&lt;span class="s"&gt;"'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+          &lt;span class="kn"&gt;access_log&lt;/span&gt;  &lt;span class="n"&gt;/var/log/nginx/access.log&lt;/span&gt;  &lt;span class="s"&gt;main&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+          &lt;span class="kn"&gt;sendfile&lt;/span&gt;        &lt;span class="no"&gt;on&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+          &lt;span class="c1"&gt;#tcp_nopush     on;
+&lt;/span&gt;
+          &lt;span class="kn"&gt;keepalive_timeout&lt;/span&gt;  &lt;span class="mi"&gt;65&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+          &lt;span class="c1"&gt;#gzip  on;
+&lt;/span&gt;
+          &lt;span class="c1"&gt;#include /etc/nginx/conf.d/*.conf;
+&lt;/span&gt;          &lt;span class="kn"&gt;upstream&lt;/span&gt; &lt;span class="s"&gt;deploy&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+                  &lt;span class="kn"&gt;server&lt;/span&gt; &lt;span class="s"&gt;unix:///var/www/ruby_sample/shared/tmp/sockets/ruby_sample.sock&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+          &lt;span class="p"&gt;}&lt;/span&gt;
+
+          &lt;span class="kn"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+              &lt;span class="kn"&gt;listen&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+              &lt;span class="kn"&gt;server_name&lt;/span&gt; &lt;span class="s"&gt;your.server.domain.ip&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="c1"&gt;# change to match your URL
+&lt;/span&gt;              &lt;span class="kn"&gt;root&lt;/span&gt; &lt;span class="n"&gt;/var/www/ruby_sample/current/public&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="c1"&gt;# I assume your app is located at this location
+&lt;/span&gt;
+              &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="n"&gt;/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+                  &lt;span class="kn"&gt;proxy_pass&lt;/span&gt; &lt;span class="s"&gt;http://deploy&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="c1"&gt;# match the name of upstream directive which is defined above
+&lt;/span&gt;                  &lt;span class="kn"&gt;proxy_set_header&lt;/span&gt; &lt;span class="s"&gt;Host&lt;/span&gt; &lt;span class="nv"&gt;$host&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+                  &lt;span class="kn"&gt;proxy_set_header&lt;/span&gt; &lt;span class="s"&gt;X-Forwarded-For&lt;/span&gt; &lt;span class="nv"&gt;$proxy_add_x_forwarded_for&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+              &lt;span class="p"&gt;}&lt;/span&gt;
+
+              &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="p"&gt;~&lt;/span&gt;&lt;span class="sr"&gt;*&lt;/span&gt; &lt;span class="s"&gt;^/assets/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+                  &lt;span class="c1"&gt;# Per RFC2616 - 1 year maximum expiry
+&lt;/span&gt;                  &lt;span class="kn"&gt;expires&lt;/span&gt; &lt;span class="s"&gt;1y&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+                  &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;Cache-Control&lt;/span&gt; &lt;span class="s"&gt;public&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+                          &lt;span class="c1"&gt;# Some browsers still send conditional-GET requests if there's a
+&lt;/span&gt;                  &lt;span class="c1"&gt;# Last-Modified header or an ETag header even if they haven't
+&lt;/span&gt;                  &lt;span class="c1"&gt;# reached the expiry date sent in the Expires header.
+&lt;/span&gt;                  &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;Last-Modified&lt;/span&gt; &lt;span class="s"&gt;""&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+                  &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;ETag&lt;/span&gt; &lt;span class="s"&gt;""&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+                  &lt;span class="kn"&gt;break&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+              &lt;span class="p"&gt;}&lt;/span&gt;
+       &lt;span class="p"&gt;}&lt;/span&gt;
+      &lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里只需要注意的是&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;upstream中 server 要配置成你在puma中bind的 socket就行了&lt;/li&gt;
+&lt;li&gt;root要设置成你服务器项目的根目录，也就是&lt;code&gt;puma.rb&lt;/code&gt;中的 &lt;code&gt;directory&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;接下里只需要重启nginx服务器，整个rails的环境就搭建完成了&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;
+  nginx -s reload
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;如果完成了配置后访问站点是504，那么可能是两种情况，一是服务器防火墙问题，二是rails环境密钥的问题，请在&lt;a href="http://segmentfault.com/a/1190000002911605"&gt;使用passenger在Centos7部署nginx+Ruby on Rails&lt;/a&gt;中寻找答案&lt;/p&gt;
+</content>
+  </entry>
   <entry>
     <title>Laravel(2) 登录重写</title>
     <link rel="alternate" href="http://blog.example.com/2015/06/16/laravel-2-login-rewrite/"/>
