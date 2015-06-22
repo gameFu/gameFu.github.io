@@ -4,10 +4,251 @@
   <id>http://blog.example.com</id>
   <link href="http://blog.example.com"/>
   <link href="http://blog.example.com/feed.xml" rel="self"/>
-  <updated>2015-06-18T22:43:00+08:00</updated>
+  <updated>2015-06-22T17:45:00+08:00</updated>
   <author>
     <name>Site Author</name>
   </author>
+  <entry>
+    <title>在rails中使用jwt实现授权和权限控制</title>
+    <link rel="alternate" href="http://blog.example.com/2015/06/22/rails-jwt/"/>
+    <id>http://blog.example.com/2015/06/22/rails-jwt/</id>
+    <published>2015-06-22T17:45:00+08:00</published>
+    <updated>2015-06-22T21:44:53+08:00</updated>
+    <summary type="html">&lt;h2 id="关于jwt"&gt;关于jwt&lt;/h2&gt;
+
+&lt;p&gt;&lt;code&gt;JWT&lt;/code&gt; 全称&lt;code&gt;json_web_token&lt;/code&gt;，是一种高效可靠的数字签名解决标准，它可以携带自定义用户信息，经过 base64 编码, hamc SHA256 加密生成 token, 然后通过 http authorization 请求头传递作为登陆凭证。在&lt;code&gt;RESTful API&lt;/code&gt;越来越流行的情况下，传统的cookie, session携带授权令牌很难满足需求了，两者都会带来业务上拓展的困难。&lt;/p&gt;
+
+&lt;h2 id="登录流程"&gt;登录流程&lt;/h2&gt;
+
+&lt;p&gt;首先，用户端会首先检查本地有没有缓存jwt，如果有，直接在请求头上带上jwt...&lt;/p&gt;</summary>
+    <content type="html">&lt;h2 id="关于jwt"&gt;关于jwt&lt;/h2&gt;
+
+&lt;p&gt;&lt;code&gt;JWT&lt;/code&gt; 全称&lt;code&gt;json_web_token&lt;/code&gt;，是一种高效可靠的数字签名解决标准，它可以携带自定义用户信息，经过 base64 编码, hamc SHA256 加密生成 token, 然后通过 http authorization 请求头传递作为登陆凭证。在&lt;code&gt;RESTful API&lt;/code&gt;越来越流行的情况下，传统的cookie, session携带授权令牌很难满足需求了，两者都会带来业务上拓展的困难。&lt;/p&gt;
+
+&lt;h2 id="登录流程"&gt;登录流程&lt;/h2&gt;
+
+&lt;p&gt;首先，用户端会首先检查本地有没有缓存jwt，如果有，直接在请求头上带上jwt去访问你的api,然后api检查这个jwt是否合法，如果合法，则通过，返回这个api请求到的信息，如果不合法返回错误信息。 如果本地没有缓存jwt，那么访问api时，api会引导用户去获取jwt，并记住之前访问的url，当用户通过输入短信验证码（或者其他方式）,获取到jwt后在请求头上带上这个jwt去访问原来访问的url&lt;/p&gt;
+
+&lt;h2 id="在ruby-on-rails下使用jwt"&gt;在ruby on rails下使用jwt&lt;/h2&gt;
+
+&lt;p&gt;在Gemfile中添加&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="n"&gt;gem&lt;/span&gt; &lt;span class="s1"&gt;'jwt'&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;运行 bundle 进行安装&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;
+bundle
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;首先是获取jwt, 我把他定义在一个名为json_web_token的controller中&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;create&lt;/span&gt;
+
+    &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="n"&gt;params&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;:auth_type&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+      &lt;span class="k"&gt;when&lt;/span&gt; &lt;span class="s1"&gt;'user'&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;verify_code&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request_phone_number&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request_verify_code&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+          &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="no"&gt;User&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;find_by&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;:phone_number&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;request_phone_number&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+          &lt;span class="k"&gt;unless&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt;
+            &lt;span class="c1"&gt;#创建新的用户&lt;/span&gt;
+            &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="no"&gt;User&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;create&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;:phone_number&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;request_phone_number&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+          &lt;span class="k"&gt;end&lt;/span&gt;
+        &lt;span class="k"&gt;else&lt;/span&gt;
+          &lt;span class="k"&gt;raise&lt;/span&gt; &lt;span class="no"&gt;LogicError&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'验证码不正确'&lt;/span&gt;
+        &lt;span class="k"&gt;end&lt;/span&gt;
+      &lt;span class="k"&gt;when&lt;/span&gt; &lt;span class="s1"&gt;'operation_user'&lt;/span&gt;
+        &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="no"&gt;OperationUser&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;auth&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;params&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;:username&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;params&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;:password&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+      &lt;span class="k"&gt;when&lt;/span&gt; &lt;span class="s1"&gt;'base_station_user'&lt;/span&gt;
+        &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="no"&gt;BaseStationUser&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;auth&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;params&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;:username&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;params&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;:password&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+
+    &lt;span class="k"&gt;unless&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt;
+      &lt;span class="k"&gt;raise&lt;/span&gt; &lt;span class="no"&gt;LogicError&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'用户名或密码错误'&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+
+    &lt;span class="c1"&gt;# 返回生成的jwt&lt;/span&gt;
+    &lt;span class="n"&gt;res&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;as_json&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;methods: :token&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;response_json&lt;/span&gt; &lt;span class="n"&gt;res&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;首先，请求这个方法的时候必须要带上一个参数是 auth_type这个参数表示登录用户的角色，不同的角色需要携带不同的参数，如user需要携带的是手机号，短信验证码，而operation_user需要携带的是用户名，密码，&lt;br&gt;
+根据不同的用户类型来判断,例如，这段代码验证了手机验证码是否正确&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;  &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;verify_code&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request_phone_number&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request_verify_code&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+          &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="no"&gt;User&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;find_by&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;:phone_number&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;request_phone_number&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;如果，通过了验证，那么返回jwt。在models的 concerns目录下创建 json_web_token_able.rb，这个文件里的代码是用来生成jwt的&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+  &lt;span class="k"&gt;module&lt;/span&gt; &lt;span class="nn"&gt;JsonWebTokenAble&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;to_jwt&lt;/span&gt;
+    &lt;span class="n"&gt;payload&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="c1"&gt;# key为用户角色，value为用户id&lt;/span&gt;
+        &lt;span class="nb"&gt;self&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;class&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;name&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+            &lt;span class="ss"&gt;:user_id&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="nb"&gt;self&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;id&lt;/span&gt;
+        &lt;span class="p"&gt;},&lt;/span&gt;
+        &lt;span class="c1"&gt;# 设置过期时间&lt;/span&gt;
+        &lt;span class="s1"&gt;'exp'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;month&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;from_now&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;to_i&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="c1"&gt;# 第二个参数为自己配置的密钥&lt;/span&gt;
+    &lt;span class="no"&gt;JWT&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;encode&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;payload&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="no"&gt;ENV&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s2"&gt;"SECRET_KEY_BASE"&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="kp"&gt;alias_method&lt;/span&gt; &lt;span class="ss"&gt;:token&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;:to_jwt&lt;/span&gt;
+&lt;span class="k"&gt;end&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在各种角色的用户模型里引进（业务需求并不需要动态建立角色，直接建立不同角色的模型，你可以根据你的业务需要进行调整）&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="kp"&gt;include&lt;/span&gt; &lt;span class="no"&gt;JsonWebTokenAble&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;那么如同我的业务需求一样，我需要在返回的时候将用户的信息返回回来该如何做呢,在models地 concerns目录下创建 auth_able.rb,&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="k"&gt;module&lt;/span&gt; &lt;span class="nn"&gt;AuthAble&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# 扩展类方法&lt;/span&gt;
+  &lt;span class="k"&gt;module&lt;/span&gt; &lt;span class="nn"&gt;ClassMethods&lt;/span&gt;
+    &lt;span class="c1"&gt;# 返回user对象&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;auth&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;identity&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;password&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+      &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;self&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;find_by&lt;/span&gt; &lt;span class="ss"&gt;username: &lt;/span&gt;&lt;span class="n"&gt;identity&lt;/span&gt;
+      &lt;span class="c1"&gt;# 匹配用户名密码&lt;/span&gt;
+      &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="p"&gt;?&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;auth&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;password&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="kp"&gt;false&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# 扩展的实例方法&lt;/span&gt;
+  &lt;span class="k"&gt;module&lt;/span&gt; &lt;span class="nn"&gt;InstanceMethods&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;auth&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;password&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+      &lt;span class="nb"&gt;self&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;authenticate&lt;/span&gt; &lt;span class="n"&gt;password&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+
+    &lt;span class="c1"&gt;# 将密码令牌排除&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;as_json&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;options&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="kp"&gt;nil&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+      &lt;span class="n"&gt;opts&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="ss"&gt;except: &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s2"&gt;"password_digest"&lt;/span&gt;&lt;span class="p"&gt;]}&lt;/span&gt;
+      &lt;span class="k"&gt;super&lt;/span&gt; &lt;span class="n"&gt;opts&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;merge&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;options&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# 将扩展的类方法和实例方法包含到模型中&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nc"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;included&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;receiver&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;receiver&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;extend&lt;/span&gt;         &lt;span class="no"&gt;ClassMethods&lt;/span&gt;
+    &lt;span class="n"&gt;receiver&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;send&lt;/span&gt; &lt;span class="ss"&gt;:include&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="no"&gt;InstanceMethods&lt;/span&gt;
+
+    &lt;span class="c1"&gt;# 可验证模型的配置&lt;/span&gt;
+    &lt;span class="n"&gt;receiver&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;has_secure_password&lt;/span&gt; &lt;span class="ss"&gt;validations: &lt;/span&gt;&lt;span class="kp"&gt;false&lt;/span&gt;
+    &lt;span class="n"&gt;receiver&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;validates&lt;/span&gt; &lt;span class="ss"&gt;:username&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;presence: &lt;/span&gt;&lt;span class="kp"&gt;true&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+&lt;span class="k"&gt;end&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;跟json_web_token_able.rb一样，只需要在模型中引入就可以&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="kp"&gt;include&lt;/span&gt; &lt;span class="no"&gt;AuthAble&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;用户获取到jwt后，就应该需要判断jwt是否合法，我们可以建立一个helper来进行判断&lt;/p&gt;
+
+&lt;p&gt;json_web_token_helper.rb&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+  &lt;span class="c1"&gt;#从请求头获取 jwt&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;request_jwt&lt;/span&gt;
+    &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;headers&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s2"&gt;"Token"&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# 解析jwt 如果不合法 抛出异常&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;jwt_claim&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;jwt&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;begin&lt;/span&gt;
+      &lt;span class="no"&gt;JWT&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;decode&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;jwt&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="no"&gt;ENV&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s2"&gt;"SECRET_KEY_BASE"&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;  
+    &lt;span class="k"&gt;rescue&lt;/span&gt;
+      &lt;span class="k"&gt;raise&lt;/span&gt; &lt;span class="no"&gt;AuthError&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'未授权的请求'&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# 获取用户id&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;jwt_user_id&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;jwt_claim&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;auth_type&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="kp"&gt;nil&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;unless&lt;/span&gt; &lt;span class="n"&gt;auth_type&lt;/span&gt;
+      &lt;span class="n"&gt;auth_type&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;user_type&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+    &lt;span class="k"&gt;begin&lt;/span&gt;
+      &lt;span class="c1"&gt;# 判断用户类型是否合法&lt;/span&gt;
+      &lt;span class="n"&gt;jwt_claim&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="n"&gt;auth_type&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="s2"&gt;"user_id"&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="k"&gt;rescue&lt;/span&gt;
+      &lt;span class="k"&gt;raise&lt;/span&gt; &lt;span class="no"&gt;AuthError&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'未授权用户'&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# 返回当前登录用户id&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;request_jwt_user_id&lt;/span&gt;
+    &lt;span class="n"&gt;meta_class&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;user_type&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;constantize&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;meta_class&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;find_by&lt;/span&gt; &lt;span class="ss"&gt;:id&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;jwt_user_id&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;jwt_claim&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request_jwt&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+      &lt;span class="n"&gt;jwt_user_id&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;jwt_claim&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request_jwt&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+    &lt;span class="k"&gt;else&lt;/span&gt;
+      &lt;span class="k"&gt;raise&lt;/span&gt; &lt;span class="no"&gt;AuthError&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'未授权用户'&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="c1"&gt;# 获取当前登录用户&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;current_user&lt;/span&gt;
+    &lt;span class="n"&gt;meta_class&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;user_type&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;constantize&lt;/span&gt;
+    &lt;span class="vi"&gt;@current_user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;meta_class&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;find_by&lt;/span&gt; &lt;span class="ss"&gt;:id&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;request_jwt_user_id&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="c1"&gt;#用户类名 用来支持多表用户&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;user_type&lt;/span&gt;
+    &lt;span class="vi"&gt;@user_type&lt;/span&gt; &lt;span class="o"&gt;||=&lt;/span&gt; &lt;span class="s1"&gt;'User'&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;user_type&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;user_type_params&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="vi"&gt;@user_type&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;user_type_params&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="kp"&gt;alias_method&lt;/span&gt; &lt;span class="ss"&gt;:current_user_id&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;:request_jwt_user_id&lt;/span&gt;
+&lt;span class="k"&gt;end&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;只需要将这个helper引入controller中就行了，由于这里面的函数会用的比较频繁，你可以选择跟我一样，将其引入到application_controller.rb中&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="kp"&gt;include&lt;/span&gt; &lt;span class="no"&gt;Backend&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="no"&gt;JsonWebTokenHelper&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;要想验证jwt是否合法，只需要在controller中调用&lt;code&gt;current_user&lt;/code&gt;就能判断。&lt;/p&gt;
+
+&lt;p&gt;那么如何根据jwt来判断不同类型的用户呢？ 在json_web_token_helper.rb里我们预留了一个函数用来设置用户类型，这样检查jwt时候合法的时候就会去检查jwt中的用户类型是否正确&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;user_type&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;user_type_params&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="vi"&gt;@user_type&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;user_type_params&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;接下来要做的是就很简单了，比如base_station下的所有控制器只要去继承一个设置了用户类型的新的公共控制器就可以达到权限控制的效果了&lt;/p&gt;
+
+&lt;p&gt;base_controller.rb&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+  &lt;span class="n"&gt;before_action&lt;/span&gt; &lt;span class="ss"&gt;:set_user_type&lt;/span&gt;
+
+  &lt;span class="kp"&gt;private&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;set_user_type&lt;/span&gt;
+    &lt;span class="vi"&gt;@user_type&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s1"&gt;'BastationUser'&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;然后需要在你以&lt;code&gt;BastationUser&lt;/code&gt;用户操作的控制器只要全部继承这个base_controller.rb就行了，其他用户的权限控制也是类似操作，至此，jwt做授权和权限控制就完成了&lt;/p&gt;
+</content>
+  </entry>
   <entry>
     <title>Ruby on Rails 终极部署方案 nginx+mina+puma</title>
     <link rel="alternate" href="http://blog.example.com/2015/06/18/rails-nginx-mina-puma/"/>
@@ -902,353 +1143,6 @@ vim /opt/nginx/conf/nginx.conf&lt;br&gt;
 &lt;hr&gt;
 
 &lt;p&gt;&lt;a href="https://phphub.org/topics/737"&gt;Laravel 一步步实现权限控制（2） 登录重写&lt;/a&gt;&lt;/p&gt;
-</content>
-  </entry>
-  <entry>
-    <title>PostgreSQL 9.4 中使用jsonb</title>
-    <link rel="alternate" href="http://blog.example.com/2015/06/09/postgresql-9-4-jsonb/"/>
-    <id>http://blog.example.com/2015/06/09/postgresql-9-4-jsonb/</id>
-    <published>2015-06-09T15:19:00+08:00</published>
-    <updated>2015-06-09T16:36:49+08:00</updated>
-    <summary type="html">&lt;p&gt;转载翻译自&lt;a href="http://nandovieira.com/using-postgresql-and-jsonb-with-ruby-on-rails"&gt;http://nandovieira.com/using-postgresql-and-jsonb-with-ruby-on-rails&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;PostgreSQL 9.4 引入了&lt;code&gt;jsonb&lt;/code&gt;，一个新的列类型用于存储文档到你的关系数据库中。&lt;code&gt;jsonb&lt;/code&gt;和&lt;code&gt;json&lt;/code&gt;在更高的层面上看起来几乎是一样的，但在存储实现上是不同的。&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;使用&lt;code&gt;jsonb&lt;/code&gt;的优势在于你可以轻易的整合关系型数据和非关系型数据，&lt;a href="http://obartunov.livejournal.com/175235.html"&gt;在性能方面，可以比大多数类似于MongoDB这样的非关系数据库更好&lt;/a&gt;&lt;/p&gt;
-
-&lt;h4 id="理解json和jsonb之间的不同"&gt;&lt;strong&gt;理解json和jsonb之间的不...&lt;/strong&gt;&lt;/h4&gt;</summary>
-    <content type="html">&lt;p&gt;转载翻译自&lt;a href="http://nandovieira.com/using-postgresql-and-jsonb-with-ruby-on-rails"&gt;http://nandovieira.com/using-postgresql-and-jsonb-with-ruby-on-rails&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;PostgreSQL 9.4 引入了&lt;code&gt;jsonb&lt;/code&gt;，一个新的列类型用于存储文档到你的关系数据库中。&lt;code&gt;jsonb&lt;/code&gt;和&lt;code&gt;json&lt;/code&gt;在更高的层面上看起来几乎是一样的，但在存储实现上是不同的。&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;使用&lt;code&gt;jsonb&lt;/code&gt;的优势在于你可以轻易的整合关系型数据和非关系型数据，&lt;a href="http://obartunov.livejournal.com/175235.html"&gt;在性能方面，可以比大多数类似于MongoDB这样的非关系数据库更好&lt;/a&gt;&lt;/p&gt;
-
-&lt;h4 id="理解json和jsonb之间的不同"&gt;&lt;strong&gt;理解json和jsonb之间的不同&lt;/strong&gt;&lt;/h4&gt;
-
-&lt;p&gt;因此，两种列类型之间的区别是什么？当我们比较写入数据速度时，由于数据存储的方式的原因，&lt;code&gt;jsonb&lt;/code&gt;会比&lt;code&gt;json&lt;/code&gt;稍微的慢一点。&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;p&gt;&lt;code&gt;json&lt;/code&gt;存储完整复制过来的文本输入，必须一遍又一遍的解析在你调用任何函数的时候。它不支持索引，但你可以为查询创建表达式索引。&lt;/p&gt;&lt;/li&gt;
-&lt;li&gt;&lt;p&gt;&lt;code&gt;jsonb&lt;/code&gt;存储的二进制格式，避免了重新解析数据结构。它支持索引，这意味着你可以不使用指定的索引就能查询任何路径。&lt;/p&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;其他的不同包括，&lt;code&gt;json&lt;/code&gt;列会每次都解析存储的值，这意味着键的顺序要和输入的时候一样。但&lt;code&gt;jsonb&lt;/code&gt;不同，以二进制格式存储且不保证键的顺序。因此，如果你有软件需要依赖键的顺序，&lt;code&gt;jsonb&lt;/code&gt;可能不是你的应用的最佳选择。&lt;/p&gt;
-
-&lt;p&gt;让我们运行一个简单的基准测试。在这个例子中，我使用下面这样一个&lt;code&gt;json&lt;/code&gt;数据结构：&lt;/p&gt;
-&lt;pre class="highlight json"&gt;&lt;code&gt;&lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="w"&gt;
-  &lt;/span&gt;&lt;span class="nt"&gt;"twitter"&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;"johndoe1"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt;
-  &lt;/span&gt;&lt;span class="nt"&gt;"github"&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;"johndoe1"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt;
-  &lt;/span&gt;&lt;span class="nt"&gt;"bio"&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;"Lorem ipsum dolor sit amet, consectetur adipisicing elit. Labore impedit 
-          aliquam sapiente dolore magni aliquid ipsa ad, enim, esse ut reprehenderit 
-          quaerat deleniti fugit eaque. Vero eligendi voluptatibus atque, asperiores."&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt;
-  &lt;/span&gt;&lt;span class="nt"&gt;"blog"&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;"http://johndoe1.example.com"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt;
-  &lt;/span&gt;&lt;span class="nt"&gt;"interests"&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="w"&gt;
-    &lt;/span&gt;&lt;span class="s2"&gt;"music"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt;
-    &lt;/span&gt;&lt;span class="s2"&gt;"movies"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt;
-    &lt;/span&gt;&lt;span class="s2"&gt;"programming"&lt;/span&gt;&lt;span class="w"&gt;
-  &lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;&lt;span class="w"&gt;
-  &lt;/span&gt;&lt;span class="nt"&gt;"age"&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;42&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt;
-  &lt;/span&gt;&lt;span class="nt"&gt;"newsletter"&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="kc"&gt;true&lt;/span&gt;&lt;span class="w"&gt;
-&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;&lt;span class="w"&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;&lt;a href="https://gist.github.com/fnando/f672c9243186933b3c8e"&gt;插入30000条完全一样的记录&lt;/a&gt;，我相信&lt;code&gt;jsonb&lt;/code&gt;在插入复杂结构时会慢一些。&lt;/p&gt;
-&lt;pre class="highlight plaintext"&gt;&lt;code&gt;Rehearsal ------------------------------------------------
-insert jsonb   2.690000   0.590000   3.280000 ( &amp;gt;12.572343)
-insert json    2.690000   0.590000   3.280000 ( 12.766534)
---------------------------------------- total: 6.560000sec
-
------------------------------------------user     system      total        real
-insert jsonb   2.680000   0.590000   3.270000 ( 13.206602)
-insert json    2.650000   0.580000   3.230000 ( 12.577138)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;真正的差距在查询&lt;code&gt;json/jsonb&lt;/code&gt;列的时候。首先让我们看看这张表和索引。&lt;/p&gt;
-&lt;pre class="highlight sql"&gt;&lt;code&gt;
-&lt;span class="k"&gt;CREATE&lt;/span&gt; &lt;span class="k"&gt;TABLE&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;
-  &lt;span class="n"&gt;id&lt;/span&gt; &lt;span class="n"&gt;serial&lt;/span&gt; &lt;span class="k"&gt;not&lt;/span&gt; &lt;span class="k"&gt;null&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-  &lt;span class="n"&gt;settings&lt;/span&gt; &lt;span class="n"&gt;jsonb&lt;/span&gt; &lt;span class="k"&gt;not&lt;/span&gt; &lt;span class="k"&gt;null&lt;/span&gt; &lt;span class="k"&gt;default&lt;/span&gt; &lt;span class="s1"&gt;'{}'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-  &lt;span class="n"&gt;preferences&lt;/span&gt; &lt;span class="n"&gt;json&lt;/span&gt; &lt;span class="k"&gt;not&lt;/span&gt; &lt;span class="k"&gt;null&lt;/span&gt; &lt;span class="k"&gt;default&lt;/span&gt; &lt;span class="s1"&gt;'{}'&lt;/span&gt;
-&lt;span class="p"&gt;);&lt;/span&gt;
-
-&lt;span class="k"&gt;CREATE&lt;/span&gt; &lt;span class="k"&gt;INDEX&lt;/span&gt; &lt;span class="n"&gt;settings_index&lt;/span&gt; &lt;span class="k"&gt;ON&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt; &lt;span class="k"&gt;USING&lt;/span&gt; &lt;span class="n"&gt;gin&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;settings&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-&lt;span class="k"&gt;CREATE&lt;/span&gt; &lt;span class="k"&gt;INDEX&lt;/span&gt; &lt;span class="n"&gt;twitter_settings_index&lt;/span&gt; &lt;span class="k"&gt;ON&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt; &lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="n"&gt;settings&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class="s1"&gt;'github'&lt;/span&gt;&lt;span class="p"&gt;));&lt;/span&gt;
-&lt;span class="k"&gt;CREATE&lt;/span&gt; &lt;span class="k"&gt;INDEX&lt;/span&gt; &lt;span class="n"&gt;preferences_index&lt;/span&gt; &lt;span class="k"&gt;ON&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt; &lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="n"&gt;preferences&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class="s1"&gt;'github'&lt;/span&gt;&lt;span class="p"&gt;));&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;注意我们有一个GIN索引在&lt;code&gt;settings&lt;/code&gt;列上，两个给出的路径（github）表达式索引。在30000条数据中搜索Github用户名为john30000的记录（最后一个插入的记录），&lt;a href="https://gist.github.com/fnando/f672c9243186933b3c8e"&gt;会给出以下数字&lt;/a&gt;：&lt;/p&gt;
-&lt;pre class="highlight plaintext"&gt;&lt;code&gt;Rehearsal -----------------------------------------------------------------
-read jsonb (index column)       0.030000   0.030000   0.060000 (  3.673465)
-read jsonb (expression index)   0.010000   0.010000   0.020000 (  0.087105)
-read json (expression index)    0.010000   0.020000   0.030000 (  0.080121)
-read json (no index)            0.060000   0.030000   0.090000 (113.206747)
--------------------------------------------------------- total: 0.200000sec
-
------------------------------------------user     system      total        real
-read jsonb (index column)       0.010000   0.020000   0.030000 (  0.092476)
-read jsonb (expression index)   0.010000   0.010000   0.020000 (  0.078916)
-read json (expression index)    0.010000   0.010000   0.020000 (  0.081908)
-read json (no index)            0.050000   0.040000   0.090000 (110.761944)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;和你看到的那样，表达式索引在两种数据类型中的性能几乎完全一样，所以它们在这里并没有实际的意义。剩下的两列不同的地方在于在查询列时有没有索引；&lt;code&gt;jsonb&lt;/code&gt;能在整列建立GIN/GIST索引，而&lt;code&gt;json&lt;/code&gt;不能建立这样的索引。这也是为什么这&lt;code&gt;json&lt;/code&gt;查询速度这么慢的原因。&lt;/p&gt;
-
-&lt;p&gt;让我们检查下在没有索引的情况下查询分析器查询数据。&lt;/p&gt;
-&lt;pre class="highlight sql"&gt;&lt;code&gt;
-&lt;span class="k"&gt;EXPLAIN&lt;/span&gt;
-&lt;span class="k"&gt;SELECT&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt;
-&lt;span class="k"&gt;FROM&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt;
-&lt;span class="k"&gt;WHERE&lt;/span&gt; &lt;span class="n"&gt;settings&lt;/span&gt; &lt;span class="o"&gt;@&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'{"twitter": "john30000"}'&lt;/span&gt; &lt;span class="k"&gt;LIMIT&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-&lt;span class="c1"&gt;--                                      QUERY PLAN
--- -------------------------------------------------------------------------------------
---  Limit  (cost=28.23..31.96 rows=1 width=468)
---    -&amp;gt;  Bitmap Heap Scan on users  (cost=28.23..140.07 rows=30 width=468)
---          Recheck Cond: (settings @&amp;gt; '{"twitter": "john30000"}'::jsonb)
---          -&amp;gt;  Bitmap Index Scan on settings_index  (cost=0.00..28.23 rows=30 width=0)
---                Index Cond: (settings @&amp;gt; '{"twitter": "john30000"}'::jsonb)
-&lt;/span&gt;
-&lt;span class="k"&gt;EXPLAIN&lt;/span&gt;
-&lt;span class="k"&gt;SELECT&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt;
-&lt;span class="k"&gt;FROM&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt;
-&lt;span class="k"&gt;WHERE&lt;/span&gt; &lt;span class="n"&gt;preferences&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class="s1"&gt;'twitter'&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s1"&gt;'john30000'&lt;/span&gt; &lt;span class="k"&gt;LIMIT&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-&lt;span class="c1"&gt;--                                QUERY PLAN
--- -------------------------------------------------------------------------
---  Limit  (cost=0.00..25.23 rows=1 width=468)
---    -&amp;gt;  Seq Scan on users  (cost=0.00..3784.00 rows=150 width=468)
---          Filter: ((preferences -&amp;gt;&amp;gt; 'twitter'::text) = 'john30000'::text)
-&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;最重要的是，&lt;code&gt;json&lt;/code&gt;做的是顺序扫描，这意味着PostgreSQL将根据顺序一条一条往下找，直到找到符合条件的数据，同时记住查找这些数据时，每条记录中的JSON内容都会被解析，这将导致在复杂结构中查询速度变慢。&lt;/p&gt;
-
-&lt;p&gt;但这些不会发生&lt;code&gt;jsonb&lt;/code&gt;列中，这种查找使用了索引，却并没有像使用表达式索引那样将速度优化的很好。&lt;/p&gt;
-
-&lt;p&gt;&lt;code&gt;jsonb&lt;/code&gt;有一个需要注意的点是，&lt;code&gt;jsonb&lt;/code&gt;会一直顺序检索如果你使用&lt;code&gt;-&amp;gt;&amp;gt;&lt;/code&gt;操作符在一个没有表达式索引的路径上。&lt;/p&gt;
-&lt;pre class="highlight sql"&gt;&lt;code&gt;
-&lt;span class="k"&gt;EXPLAIN&lt;/span&gt;
-&lt;span class="k"&gt;SELECT&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt;
-&lt;span class="k"&gt;FROM&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt;
-&lt;span class="k"&gt;WHERE&lt;/span&gt; &lt;span class="n"&gt;settings&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class="s1"&gt;'twitter'&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s1"&gt;'johndoe30000'&lt;/span&gt; &lt;span class="k"&gt;LIMIT&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-&lt;span class="c1"&gt;--                                QUERY PLAN
--- -------------------------------------------------------------------------
---  Limit  (cost=0.00..25.23 rows=1 width=468)
---    -&amp;gt;  Seq Scan on users  (cost=0.00..3784.00 rows=150 width=468)
---          Filter: ((settings -&amp;gt;&amp;gt; 'twitter'::text) = 'johndoe30000'::text)
--- (3 rows)
-&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;因此，在你不提前知道查询哪个&lt;code&gt;json&lt;/code&gt;数据中的键或者查询所有&lt;code&gt;json&lt;/code&gt;路径的情况下，请确保你定义了GIN/GIST索引和使用&lt;code&gt;@&amp;gt;&lt;/code&gt;（或者其他有利于索引的操作符）&lt;/p&gt;
-
-&lt;h4 id="json转化为jsonb"&gt;&lt;strong&gt;json转化为jsonb&lt;/strong&gt;&lt;/h4&gt;
-
-&lt;p&gt;如果你已经使用了&lt;code&gt;json&lt;/code&gt;格式或者&lt;code&gt;text&lt;/code&gt;格式的列存储JSON数据，你可以将他们转化为&lt;code&gt;jsonb&lt;/code&gt;，因而你可以依靠列索引。&lt;/p&gt;
-&lt;pre class="highlight sql"&gt;&lt;code&gt;
-&lt;span class="k"&gt;BEGIN&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;ALTER&lt;/span&gt; &lt;span class="k"&gt;TABLE&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt; &lt;span class="k"&gt;ADD&lt;/span&gt; &lt;span class="k"&gt;COLUMN&lt;/span&gt; &lt;span class="n"&gt;preferences_jsonb&lt;/span&gt; &lt;span class="n"&gt;jsonb&lt;/span&gt; &lt;span class="k"&gt;DEFAULT&lt;/span&gt; &lt;span class="s1"&gt;'{}'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;UPDATE&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt; &lt;span class="k"&gt;set&lt;/span&gt; &lt;span class="n"&gt;preferences_jsonb&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;preferences&lt;/span&gt;&lt;span class="p"&gt;::&lt;/span&gt;&lt;span class="n"&gt;jsonb&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;ALTER&lt;/span&gt; &lt;span class="k"&gt;TABLE&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt; &lt;span class="k"&gt;ALTER&lt;/span&gt; &lt;span class="k"&gt;COLUMN&lt;/span&gt; &lt;span class="n"&gt;preferences_jsonb&lt;/span&gt; &lt;span class="k"&gt;SET&lt;/span&gt; &lt;span class="k"&gt;NOT&lt;/span&gt; &lt;span class="k"&gt;NULL&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;ALTER&lt;/span&gt; &lt;span class="k"&gt;TABLE&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt; &lt;span class="k"&gt;RENAME&lt;/span&gt; &lt;span class="k"&gt;COLUMN&lt;/span&gt; &lt;span class="n"&gt;preferences&lt;/span&gt; &lt;span class="k"&gt;TO&lt;/span&gt; &lt;span class="n"&gt;preferences_json&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;ALTER&lt;/span&gt; &lt;span class="k"&gt;TABLE&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt; &lt;span class="k"&gt;RENAME&lt;/span&gt; &lt;span class="k"&gt;COLUMN&lt;/span&gt; &lt;span class="n"&gt;preferences_jsonb&lt;/span&gt; &lt;span class="k"&gt;TO&lt;/span&gt; &lt;span class="n"&gt;preferences&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-&lt;span class="c1"&gt;-- Don't remove the column until you're sure everything is working.
--- ALTER TABLE users DROP COLUMN preferences_json;
-&lt;/span&gt;
-&lt;span class="k"&gt;COMMIT&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;现在你已经知道了&lt;code&gt;json&lt;/code&gt;是如何工作的，让我们看看在Ruby on Rails中是怎么使用的。&lt;/p&gt;
-
-&lt;h4 id="在ruby-on-rails中使用jsonb"&gt;&lt;strong&gt;在Ruby on Rails中使用jsonb&lt;/strong&gt;&lt;/h4&gt;
-
-&lt;p&gt;Rails从4.2版本开始支持&lt;code&gt;jsonb&lt;/code&gt;，使用他跟使用&lt;code&gt;string&lt;/code&gt;或&lt;code&gt;text&lt;/code&gt;类型的列一样简单，在下面的代码中，你将看到如何添加&lt;code&gt;jsonb&lt;/code&gt;类型的列到已经存在的表中。&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;# db/migrate/*_create_users.rb&lt;/span&gt;
-&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;CreateUsers&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="no"&gt;ActiveRecord&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="no"&gt;Migration&lt;/span&gt;
-  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;change&lt;/span&gt;
-    &lt;span class="n"&gt;enable_extension&lt;/span&gt; &lt;span class="s1"&gt;'citext'&lt;/span&gt;
-
-    &lt;span class="n"&gt;create_table&lt;/span&gt; &lt;span class="ss"&gt;:users&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt; &lt;span class="o"&gt;|&lt;/span&gt;&lt;span class="n"&gt;t&lt;/span&gt;&lt;span class="o"&gt;|&lt;/span&gt;
-      &lt;span class="n"&gt;t&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;text&lt;/span&gt; &lt;span class="ss"&gt;:name&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;null: &lt;/span&gt;&lt;span class="kp"&gt;false&lt;/span&gt;
-      &lt;span class="n"&gt;t&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;citext&lt;/span&gt; &lt;span class="ss"&gt;:username&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;null: &lt;/span&gt;&lt;span class="kp"&gt;false&lt;/span&gt;
-      &lt;span class="n"&gt;t&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;jsonb&lt;/span&gt; &lt;span class="ss"&gt;:preferences&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;null: &lt;/span&gt;&lt;span class="kp"&gt;false&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;default: &lt;/span&gt;&lt;span class="s1"&gt;'{}'&lt;/span&gt;
-    &lt;span class="k"&gt;end&lt;/span&gt;
-
-    &lt;span class="n"&gt;add_index&lt;/span&gt;  &lt;span class="ss"&gt;:users&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;:preferences&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;using: :gin&lt;/span&gt;
-  &lt;span class="k"&gt;end&lt;/span&gt;
-&lt;span class="k"&gt;end&lt;/span&gt;
-
-&lt;span class="c1"&gt;# db/migrate/*_add_jsonb_column_to_users.rb&lt;/span&gt;
-&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;AddJsonbColumnToUsers&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="no"&gt;ActiveRecord&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="no"&gt;Migration&lt;/span&gt;
-  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;change&lt;/span&gt;
-    &lt;span class="n"&gt;add_column&lt;/span&gt; &lt;span class="ss"&gt;:users&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;:preferences&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;:jsonb&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;null: &lt;/span&gt;&lt;span class="kp"&gt;false&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;default: &lt;/span&gt;&lt;span class="s1"&gt;'{}'&lt;/span&gt;
-    &lt;span class="n"&gt;add_index&lt;/span&gt;  &lt;span class="ss"&gt;:users&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;:preferences&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;using: :gin&lt;/span&gt;
-  &lt;span class="k"&gt;end&lt;/span&gt;
-&lt;span class="k"&gt;end&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;注意，我们已经定义了GIN类型的索引，如果你想对给出的路径创建表达式索引，你必须使用&lt;code&gt;execute&lt;/code&gt;。在这个例子中，Rails不知道怎么使用ruby来转化这个索引，所以你最好选择将格式转为SQL。&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;# config/initializers/active_record.rb&lt;/span&gt;
-&lt;span class="no"&gt;Rails&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;application&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;config&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;active_record&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;schema_format&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="ss"&gt;:sql&lt;/span&gt;
-
-&lt;span class="c1"&gt;# db/migrate/*_add_index_to_preferences_path_on_users.rb&lt;/span&gt;
-&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;AddIndexToPreferencesPathOnUsers&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="no"&gt;ActiveRecord&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="no"&gt;Migration&lt;/span&gt;
-  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;change&lt;/span&gt;
-    &lt;span class="n"&gt;execute&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&amp;lt;-&lt;/span&gt;&lt;span class="no"&gt;SQL&lt;/span&gt;&lt;span class="sh"&gt;
-      CREATE INDEX user_prefs_newsletter_index ON users ((preferences-&amp;gt;&amp;gt;'newsletter'))
-&lt;/span&gt;&lt;span class="no"&gt;    SQL&lt;/span&gt;
-  &lt;span class="k"&gt;end&lt;/span&gt;
-&lt;span class="k"&gt;end&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;你的模型不需要做任何配置。你只需要创建支持&lt;code&gt;json&lt;/code&gt;序列化的记录来提供对象。&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="no"&gt;User&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;create!&lt;/span&gt;&lt;span class="p"&gt;({&lt;/span&gt;
-  &lt;span class="ss"&gt;name: &lt;/span&gt;&lt;span class="s1"&gt;'John Doe'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-  &lt;span class="ss"&gt;username: &lt;/span&gt;&lt;span class="s1"&gt;'johndoe'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-  &lt;span class="ss"&gt;preferences: &lt;/span&gt;&lt;span class="p"&gt;{&lt;/span&gt;
-    &lt;span class="ss"&gt;twitter: &lt;/span&gt;&lt;span class="s1"&gt;'johndoe'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-    &lt;span class="ss"&gt;github: &lt;/span&gt;&lt;span class="s1"&gt;'johndoe'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-    &lt;span class="ss"&gt;blog: &lt;/span&gt;&lt;span class="s1"&gt;'http://example.com'&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-&lt;span class="p"&gt;})&lt;/span&gt;
-
-&lt;span class="c1"&gt;# Reload record from database to enforce serialization.&lt;/span&gt;
-&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;reload&lt;/span&gt;
-
-&lt;span class="c1"&gt;# Show preferences.&lt;/span&gt;
-&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;preferences&lt;/span&gt;
-&lt;span class="c1"&gt;#=&amp;gt; {"blog"=&amp;gt;"http://example.com", "github"=&amp;gt;"johndoe", "twitter"=&amp;gt;"johndoe"}&lt;/span&gt;
-
-&lt;span class="c1"&gt;# Get blog.&lt;/span&gt;
-&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;preferences&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'blog'&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
-&lt;span class="c1"&gt;#=&amp;gt; http://example.com&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;可以看到所有的键都是以&lt;code&gt;string&lt;/code&gt;形式返回。你也可以使用通用的序列化方式，你就可以通过符号来访问JSON对象。&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;# app/models/user.rb&lt;/span&gt;
-&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;User&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="no"&gt;ActiveRecord&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="no"&gt;Base&lt;/span&gt;
-  &lt;span class="n"&gt;serialize&lt;/span&gt; &lt;span class="ss"&gt;:preferences&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="no"&gt;HashSerializer&lt;/span&gt;
-&lt;span class="k"&gt;end&lt;/span&gt;
-
-&lt;span class="c1"&gt;# app/serializers/hash_serializer.rb&lt;/span&gt;
-&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;HashSerializer&lt;/span&gt;
-  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nc"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;dump&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;hash&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-    &lt;span class="nb"&gt;hash&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;to_json&lt;/span&gt;
-  &lt;span class="k"&gt;end&lt;/span&gt;
-
-  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nc"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;load&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;hash&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;hash&lt;/span&gt; &lt;span class="o"&gt;||&lt;/span&gt; &lt;span class="p"&gt;{}).&lt;/span&gt;&lt;span class="nf"&gt;with_indifferent_access&lt;/span&gt;
-  &lt;span class="k"&gt;end&lt;/span&gt;
-&lt;span class="k"&gt;end&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;另一个比较有意思的是ActiveRecord特性就是&lt;code&gt;store_accessor&lt;/code&gt;。如果你更改一些属性比较频繁，你可以创建&lt;code&gt;accessor&lt;/code&gt;，这样你可以赋值给属性来代替JSON传值。这也使得数据验证和创建表单更加简单。因此，如果我们创建一个表单来保存博客url、Github和Twitter账户，你可以像下面这样使用：&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;User&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="no"&gt;ActiveRecord&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="no"&gt;Base&lt;/span&gt;
-  &lt;span class="n"&gt;serialize&lt;/span&gt; &lt;span class="ss"&gt;:preferences&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="no"&gt;HashSerializer&lt;/span&gt;
-  &lt;span class="n"&gt;store_accessor&lt;/span&gt; &lt;span class="ss"&gt;:preferences&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;:blog&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;:github&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;:twitter&lt;/span&gt;
-&lt;span class="k"&gt;end&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;现在你可以简单的赋值给这些属性了。&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="no"&gt;User&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;new&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;blog: &lt;/span&gt;&lt;span class="s1"&gt;'http://example.org'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;github: &lt;/span&gt;&lt;span class="s1"&gt;'johndoe'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-
-&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;preferences&lt;/span&gt;
-&lt;span class="c1"&gt;#=&amp;gt; {"blog"=&amp;gt;"http://example.org", "github"=&amp;gt;"johndoe"}&lt;/span&gt;
-
-&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;blog&lt;/span&gt;
-&lt;span class="c1"&gt;#=&amp;gt; http://example.org&lt;/span&gt;
-
-&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;preferences&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="ss"&gt;:github&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
-&lt;span class="c1"&gt;#=&amp;gt; johndoe&lt;/span&gt;
-
-&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;preferences&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'github'&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
-&lt;span class="c1"&gt;#=&amp;gt; johndoe&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;定义了 store accessors 后，你可以像正常其他属性一样，定义数据验证和创建表单&lt;/p&gt;
-
-&lt;h4 id="查询jsonb列"&gt;&lt;strong&gt;查询jsonb列&lt;/strong&gt;&lt;/h4&gt;
-
-&lt;p&gt;现在是时候使用一些查询操作。关于PostgreSQL的更多操作，请&lt;a href="http://www.postgresql.org/docs/9.4/static/functions-json.html"&gt;阅读完整的文档列表&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;同时，记得使用注释你执行的查询语句；这有助于你更好的去做索引优化。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;订阅新闻邮件的用户&lt;/strong&gt;&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;# preferences-&amp;gt;newsletter = true&lt;/span&gt;
-&lt;span class="no"&gt;User&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'preferences @&amp;gt; ?'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="ss"&gt;newsletter: &lt;/span&gt;&lt;span class="kp"&gt;true&lt;/span&gt;&lt;span class="p"&gt;}.&lt;/span&gt;&lt;span class="nf"&gt;to_json&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;&lt;strong&gt;对Ruby感兴趣的用户&lt;/strong&gt;&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;# preferences-&amp;gt;interests = ['ruby', 'javascript', 'python']&lt;/span&gt;
-&lt;span class="no"&gt;User&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;"preferences -&amp;gt; 'interests' ? :language"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;language: &lt;/span&gt;&lt;span class="s1"&gt;'ruby'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这个查询不会用到列索引；如果你想查询数组，请确保你创建了表达式索引。&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="no"&gt;CREATE&lt;/span&gt; &lt;span class="no"&gt;INDEX&lt;/span&gt; &lt;span class="n"&gt;preferences_interests_on_users&lt;/span&gt; &lt;span class="no"&gt;ON&lt;/span&gt; &lt;span class="n"&gt;users&lt;/span&gt; &lt;span class="no"&gt;USING&lt;/span&gt; &lt;span class="no"&gt;GIN&lt;/span&gt; &lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="n"&gt;preferences&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="s1"&gt;'interests'&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;&lt;strong&gt;设置了Twitter和Github账号的用户&lt;/strong&gt;&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;# preferences-&amp;gt;twitter AND preferences-&amp;gt;github&lt;/span&gt;
-&lt;span class="no"&gt;User&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'preferences ?&amp;amp; array[:keys]'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;keys: &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'twitter'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'github'&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;&lt;strong&gt;设置Twitter或Github账号的用户&lt;/strong&gt;&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;# preferences-&amp;gt;twitter OR preferences-&amp;gt;github&lt;/span&gt;
-&lt;span class="no"&gt;User&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'preferences ?| array[:keys]'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;keys: &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'twitter'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'github'&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;&lt;strong&gt;住在洛杉矶/加利福尼亚的用户&lt;/strong&gt;&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;# preferences-&amp;gt;state = 'SP' AND preferences-&amp;gt;city = 'São Paulo'&lt;/span&gt;
-&lt;span class="no"&gt;User&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'preferences @&amp;gt; ?'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="ss"&gt;city: &lt;/span&gt;&lt;span class="s1"&gt;'San Francisco'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;state: &lt;/span&gt;&lt;span class="s1"&gt;'CA'&lt;/span&gt;&lt;span class="p"&gt;}.&lt;/span&gt;&lt;span class="nf"&gt;to_json&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h4 id="关于hstore"&gt;&lt;strong&gt;关于hstore&lt;/strong&gt;&lt;/h4&gt;
-
-&lt;p&gt;&lt;code&gt;hstore&lt;/code&gt;列不允许嵌套的结构，它将所有的值以字符串形式存储，所以必须要在数据库层或者应用程序层将数据强制转化为字符串类型。而在&lt;code&gt;json/jsonb&lt;/code&gt;类型的列上不会遇到这个问题，数值类型(integers/float)，布尔类型，数组，字符串和空类型都可以接受，甚至你想的任何方式的数据嵌套。&lt;/p&gt;
-
-&lt;p&gt;因此推荐你尽早放弃&lt;code&gt;hstore&lt;/code&gt;而去使用&lt;code&gt;jsonb&lt;/code&gt;，但要记住的是你必须使用PostgreSQL 9.4以上版本才行。&lt;/p&gt;
-
-&lt;p&gt;&lt;a href="http://nandovieira.com/using-postgresql-and-hstore-with-rails"&gt;我以前写的hstore&lt;/a&gt;，想知道更多相关的内容就点击查看。&lt;/p&gt;
-
-&lt;h4 id="总结"&gt;总结&lt;/h4&gt;
-
-&lt;p&gt;PostgreSQL是一个非常强大的数据库，幸运的是ActiveRecord能跟上PostgreSQL的更新，为jsonb和hstore特性引入了内置支持。&lt;/p&gt;
-
-&lt;p&gt;而像表达式索引这样的支持也在不断的改善。将ActiveRecord的序列化改为SQL没什么大不了的，但却使的索引变得更加简单。&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;# This doesn't exist, but it would be nice to have it!&lt;/span&gt;
-&lt;span class="n"&gt;add_index&lt;/span&gt; &lt;span class="ss"&gt;:users&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;"(settings-&amp;gt;&amp;gt;'github')"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;raw: &lt;/span&gt;&lt;span class="kp"&gt;true&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;在每一个新版本中，使用Rails和PostgreSQL都比过去更加容易，变得更加出色。因此，尝试使用最新的Rails版本，付出总是会很快得到回报的。&lt;/p&gt;
 </content>
   </entry>
 </feed>
