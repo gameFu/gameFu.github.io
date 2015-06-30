@@ -23,8 +23,8 @@
 </code></pre>
 
 <p>将如下配置前的#号去掉</p>
-<pre class="highlight ruby"><code><span class="c1">#禁用root账户登录，非必要，但为了安全性，请配置</span>
-<span class="no">PermitRootLogin</span> <span class="n">no</span>
+<pre class="highlight ruby"><code><span class="c1">#禁用root账户登录，非必要，但为了安全性，请配置,但是如果使用root用户一定要记得开启</span>
+<span class="no">PermitRootLogin</span> <span class="n">yes</span>
 
 <span class="c1"># 是否让 sshd 去检查用户家目录或相关档案的权限数据，</span>
 <span class="c1"># 这是为了担心使用者将某些重要档案的权限设错，可能会导致一些问题所致。</span>

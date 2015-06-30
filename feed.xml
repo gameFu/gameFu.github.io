@@ -921,7 +921,7 @@ vim /opt/nginx/conf/nginx.conf&lt;br&gt;
     <link rel="alternate" href="http://blog.example.com/2015/06/15/centos7-deploy-ssh/"/>
     <id>http://blog.example.com/2015/06/15/centos7-deploy-ssh/</id>
     <published>2015-06-15T22:57:00+08:00</published>
-    <updated>2015-06-15T23:26:53+08:00</updated>
+    <updated>2015-06-30T14:25:15+08:00</updated>
     <summary type="html">&lt;h3 id="使用ssh证书授权登录的必要性"&gt;使用ssh证书授权登录的必要性&lt;/h3&gt;
 
 &lt;p&gt;普通用户登录时，以往的做法往往是使用账号密码登录，但是这样的登录方式风险相当高，使用密钥登录能大大降低这个风险，这个密钥是针对每台计算机生成的独一无二的凭证，保存在登录用户的电脑中，只能通过登录用户电脑的证书授权才能登录服务器。&lt;/p&gt;
@@ -962,8 +962,8 @@ vim /opt/nginx/conf/nginx.conf&lt;br&gt;
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;将如下配置前的#号去掉&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="c1"&gt;#禁用root账户登录，非必要，但为了安全性，请配置&lt;/span&gt;
-&lt;span class="no"&gt;PermitRootLogin&lt;/span&gt; &lt;span class="n"&gt;no&lt;/span&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="c1"&gt;#禁用root账户登录，非必要，但为了安全性，请配置,但是如果使用root用户一定要记得开启&lt;/span&gt;
+&lt;span class="no"&gt;PermitRootLogin&lt;/span&gt; &lt;span class="n"&gt;yes&lt;/span&gt;
 
 &lt;span class="c1"&gt;# 是否让 sshd 去检查用户家目录或相关档案的权限数据，&lt;/span&gt;
 &lt;span class="c1"&gt;# 这是为了担心使用者将某些重要档案的权限设错，可能会导致一些问题所致。&lt;/span&gt;
