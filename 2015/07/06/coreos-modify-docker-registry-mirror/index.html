@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><meta content="initial-scale=1.0, user-scalable=no" name="viewport" /><title>coreos中更改docker镜像地址 | gameFu's Blog</title><meta description="由于docker的不断成熟，docker在实际生产环境中的应用已经得到越来越多的印证，因此，公司项目想从原来的Mina部署转为docker部署，但是docker仓库由于在国内没有cdn，导致镜像下载速度无比的缓慢，所以决定换成国内镜像，由于操作系统是使用coreos，无论国内外资料都非常少，因此途中爬了很多坑，这篇文章是我爬坑的总结  docker国内镜像  docker是目前炙手可热的云计算开源项目，随着docker不断发展，不久前，国内第一家基于docker技术的一站式容器云平台daocloud..." /><link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" /><link href="../../../../stylesheets/all-d495412b.css" rel="stylesheet" type="text/css" /><link href="../../../../images/favicon-6c3f3d04.png" rel="icon" type="image/png" /></head><body><header><div id="top-menu"><div class="top-menu-wrapper"><div class="top-menu-list"><ul><li><a href="/">Home</a></li><li><a href="/archives/">Archives</a></li><li><a href="/tags/">Tags</a></li><li><a href="/by-year/">By Year</a></li></ul></div><div class="feed"><a href="/feed.xml"><i class="fa fa-rss-square"></i></a></div></div></div><h1 class="logo"><a href="/" title="gameFu's Blog"><span class="logo-text">gameFu's Blog</span></a></h1></header><main><article><h1 class="article-title">coreos中更改docker镜像地址</h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">July 06, 2015</span></div><div class="tag-labels"><a href="/tags/docker/"><small class="tag-label">docker</small></a><a href="/tags/coreos/"><small class="tag-label">coreos</small></a></div><hr class="article-header-separator" /><p>由于<code>docker</code>的不断成熟，docker在实际生产环境中的应用已经得到越来越多的印证，因此，公司项目想从原来的Mina部署转为<code>docker</code>部署，但是docker仓库由于在国内没有cdn，导致镜像下载速度无比的缓慢，所以决定换成国内镜像，由于操作系统是使用<code>coreos</code>，无论国内外资料都非常少，因此途中爬了很多坑，这篇文章是我爬坑的总结</p>
+
+<h3 id="docker国内镜像">docker国内镜像</h3>
+
+<p><code>docker</code>是目前炙手可热的云计算开源项目，随着docker不断发展，不久前，国内第一家基于<code>docker</code>技术的一站式容器云平台daocloud正式推出了，同时也给国内广大docker爱好者带来了docker的免费国内镜像.前往docker的官网注册一个账号登录后就能得到一个免费的docker镜像地址，如<a href="http://xxx.m.daocloud.io">http://xxx.m.daocloud.io</a></p>
+
+<h3 id="关于coreos">关于coreos</h3>
+
+<p><code>coreos</code>是一个高度精简的linux操作系统，将许多原本需要复杂人工操作或者第三方软件支持的功能在操作系统级别进行了实现，同时剔除了其他对于服务器系统非核心的软件，比如GUI和包管理器。<code>coreos</code>并不鼓励用户将各种应用软件直接安装在操作系统之上，而是提倡将所有服务运行在单独的应用容器中，由应用容器提供应用所需要的基础功能环境。这种做法将操作系统和应用程序的职责做了更彻底的分离，降低操作系统和应用程序的耦合度，使运行这些服务器的公司可以更快速、更廉价地更新自己的线上业务。<br>
+正式这种特性，<code>coreos</code>可以说十分适合用来部署<code>docker</code>服务</p>
+
+<h3 id="更改docker镜像地址">更改docker镜像地址</h3>
+
+<p><code>docker</code>在<code>coreos</code>中是一个服务，在<code>coreos</code>中没一个服务都由一个unit文件来定义，<code>docker</code>的unit文件在<code>usr/lib/systemd/system/docker.service</code>,我们需要将它拷贝出来将其放在docker服务启动时会加载的位置</p>
+<pre class="highlight shell"><code>
+cp /usr/lib/systemd/system/docker.service /etc/systemd/system
+
+</code></pre>
+
+<p>打开这种文件，我们会发现里面有一个更改docker镜像地址的关键环境变量<code>$DOCKER_OPTS</code>，而更改镜像地址的本质就是更改<code>$DOCKER_OPTS</code>的值。<br>
+这个环境变量的值是在<code>/run/flannel_docker_opts.env</code>中设置的，如果你的系统里没有这个文件，就自己添加一个这个文件</p>
+
+<p>往这个文件里添加从daocloud上获取的镜像地址</p>
+<pre class="highlight shell"><code>
+<span class="nv">DOCKER_OPTS</span><span class="o">=</span><span class="s2">"--registry-mirror=http://xxxx.m.daocloud.io"</span>
+
+</code></pre>
+
+<p>添加完成后，运行</p>
+<pre class="highlight shell"><code>
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
+</code></pre>
+
+<p>运行 <code>ps aux</code> 如果能看到</p>
+<pre class="highlight shell"><code>
+root      1725  0.6  1.7 221400 18328 ?        Ssl  15:27   0:00 docker --daemon --host<span class="o">=</span>fd:// --registry-mirror<span class="o">=</span>http://xxx.m.daocloud
+
+</code></pre>
+
+<p>那么就大功告成了</p>
+
+<h3 id="总结">总结</h3>
+
+<p>虽然整个配置流程看起来并不复杂，但是使用比较新的技术难免要爬坑，由于国内外资料都非常的少，导致爬坑异常的艰难，希望大家能节省爬过这个坑的时间。</p>
+<div class="social"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2015 <a href="/">gameFu's Blog</a> - Site Author</div></div></footer></body></html>

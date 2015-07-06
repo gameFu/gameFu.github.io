@@ -4,10 +4,69 @@
   <id>http://blog.example.com</id>
   <link href="http://blog.example.com"/>
   <link href="http://blog.example.com/feed.xml" rel="self"/>
-  <updated>2015-06-22T17:45:00+08:00</updated>
+  <updated>2015-07-06T23:45:00+08:00</updated>
   <author>
     <name>Site Author</name>
   </author>
+  <entry>
+    <title>coreos中更改docker镜像地址</title>
+    <link rel="alternate" href="http://blog.example.com/2015/07/06/coreos-modify-docker-registry-mirror/"/>
+    <id>http://blog.example.com/2015/07/06/coreos-modify-docker-registry-mirror/</id>
+    <published>2015-07-06T23:45:00+08:00</published>
+    <updated>2015-07-07T00:25:43+08:00</updated>
+    <summary type="html">&lt;p&gt;由于&lt;code&gt;docker&lt;/code&gt;的不断成熟，docker在实际生产环境中的应用已经得到越来越多的印证，因此，公司项目想从原来的Mina部署转为&lt;code&gt;docker&lt;/code&gt;部署，但是docker仓库由于在国内没有cdn，导致镜像下载速度无比的缓慢，所以决定换成国内镜像，由于操作系统是使用&lt;code&gt;coreos&lt;/code&gt;，无论国内外资料都非常少，因此途中爬了很多坑，这篇文章是我爬坑的总结&lt;/p&gt;
+
+&lt;h3 id="docker国内镜像"&gt;docker国内镜像&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;docker&lt;/code&gt;是目前炙手可热的云计算开源项目，随着docker不断发展，不久前，国内第一家基于&lt;code&gt;docker&lt;/code&gt;技术的一站式容器云平台daocloud...&lt;/p&gt;</summary>
+    <content type="html">&lt;p&gt;由于&lt;code&gt;docker&lt;/code&gt;的不断成熟，docker在实际生产环境中的应用已经得到越来越多的印证，因此，公司项目想从原来的Mina部署转为&lt;code&gt;docker&lt;/code&gt;部署，但是docker仓库由于在国内没有cdn，导致镜像下载速度无比的缓慢，所以决定换成国内镜像，由于操作系统是使用&lt;code&gt;coreos&lt;/code&gt;，无论国内外资料都非常少，因此途中爬了很多坑，这篇文章是我爬坑的总结&lt;/p&gt;
+
+&lt;h3 id="docker国内镜像"&gt;docker国内镜像&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;docker&lt;/code&gt;是目前炙手可热的云计算开源项目，随着docker不断发展，不久前，国内第一家基于&lt;code&gt;docker&lt;/code&gt;技术的一站式容器云平台daocloud正式推出了，同时也给国内广大docker爱好者带来了docker的免费国内镜像.前往docker的官网注册一个账号登录后就能得到一个免费的docker镜像地址，如&lt;a href="http://xxx.m.daocloud.io"&gt;http://xxx.m.daocloud.io&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id="关于coreos"&gt;关于coreos&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;coreos&lt;/code&gt;是一个高度精简的linux操作系统，将许多原本需要复杂人工操作或者第三方软件支持的功能在操作系统级别进行了实现，同时剔除了其他对于服务器系统非核心的软件，比如GUI和包管理器。&lt;code&gt;coreos&lt;/code&gt;并不鼓励用户将各种应用软件直接安装在操作系统之上，而是提倡将所有服务运行在单独的应用容器中，由应用容器提供应用所需要的基础功能环境。这种做法将操作系统和应用程序的职责做了更彻底的分离，降低操作系统和应用程序的耦合度，使运行这些服务器的公司可以更快速、更廉价地更新自己的线上业务。&lt;br&gt;
+正式这种特性，&lt;code&gt;coreos&lt;/code&gt;可以说十分适合用来部署&lt;code&gt;docker&lt;/code&gt;服务&lt;/p&gt;
+
+&lt;h3 id="更改docker镜像地址"&gt;更改docker镜像地址&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;docker&lt;/code&gt;在&lt;code&gt;coreos&lt;/code&gt;中是一个服务，在&lt;code&gt;coreos&lt;/code&gt;中没一个服务都由一个unit文件来定义，&lt;code&gt;docker&lt;/code&gt;的unit文件在&lt;code&gt;usr/lib/systemd/system/docker.service&lt;/code&gt;,我们需要将它拷贝出来将其放在docker服务启动时会加载的位置&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+cp /usr/lib/systemd/system/docker.service /etc/systemd/system
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;打开这种文件，我们会发现里面有一个更改docker镜像地址的关键环境变量&lt;code&gt;$DOCKER_OPTS&lt;/code&gt;，而更改镜像地址的本质就是更改&lt;code&gt;$DOCKER_OPTS&lt;/code&gt;的值。&lt;br&gt;
+这个环境变量的值是在&lt;code&gt;/run/flannel_docker_opts.env&lt;/code&gt;中设置的，如果你的系统里没有这个文件，就自己添加一个这个文件&lt;/p&gt;
+
+&lt;p&gt;往这个文件里添加从daocloud上获取的镜像地址&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+&lt;span class="nv"&gt;DOCKER_OPTS&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;"--registry-mirror=http://xxxx.m.daocloud.io"&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;添加完成后，运行&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;运行 &lt;code&gt;ps aux&lt;/code&gt; 如果能看到&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+root      1725  0.6  1.7 221400 18328 ?        Ssl  15:27   0:00 docker --daemon --host&lt;span class="o"&gt;=&lt;/span&gt;fd:// --registry-mirror&lt;span class="o"&gt;=&lt;/span&gt;http://xxx.m.daocloud
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;那么就大功告成了&lt;/p&gt;
+
+&lt;h3 id="总结"&gt;总结&lt;/h3&gt;
+
+&lt;p&gt;虽然整个配置流程看起来并不复杂，但是使用比较新的技术难免要爬坑，由于国内外资料都非常的少，导致爬坑异常的艰难，希望大家能节省爬过这个坑的时间。&lt;/p&gt;
+</content>
+  </entry>
   <entry>
     <title>在rails中使用jwt实现授权和权限控制</title>
     <link rel="alternate" href="http://blog.example.com/2015/06/22/rails-jwt/"/>
@@ -997,152 +1056,6 @@ vim /opt/nginx/conf/nginx.conf&lt;br&gt;
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;h4 id="这样一来在计算机持有密钥的情况下就可以不使用账号密码登录服务器了"&gt;这样一来在计算机持有密钥的情况下就可以不使用账号密码登录服务器了&lt;/h4&gt;
-</content>
-  </entry>
-  <entry>
-    <title>Laravel(1) 注册重写</title>
-    <link rel="alternate" href="http://blog.example.com/2015/06/09/laravel-1-rewrite-register/"/>
-    <id>http://blog.example.com/2015/06/09/laravel-1-rewrite-register/</id>
-    <published>2015-06-09T17:41:00+08:00</published>
-    <updated>2015-06-15T23:26:46+08:00</updated>
-    <summary type="html">&lt;h5 id="配置路由"&gt;配置路由&lt;/h5&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-&lt;span class="nx"&gt;Route&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="na"&gt;controllers&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;
-  &lt;span class="s1"&gt;&amp;apos;auth&amp;apos;&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;&amp;apos;Auth\AuthController&amp;apos;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-&lt;span class="p"&gt;]);&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这种路由配置方式对应的路径方式是 访问的方式+方法名 如在浏览器中使用get方式去访问register方法 那么这个路由会自动配置到这个类下面的getRegister方法。post也是一样&lt;/p&gt;
-
-&lt;h5 id="建立一个自己的注册页面"&gt;建立一个自己的注册页面&lt;/h5&gt;
-
-&lt;p&gt;我在AuthControlle里建立一个自己的视图&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;getRegister&lt;/span&gt;&lt;span class="p"&gt;(){&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;</summary>
-    <content type="html">&lt;h5 id="配置路由"&gt;配置路由&lt;/h5&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-&lt;span class="nx"&gt;Route&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="na"&gt;controllers&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;
-  &lt;span class="s1"&gt;'auth'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'Auth\AuthController'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-&lt;span class="p"&gt;]);&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这种路由配置方式对应的路径方式是 访问的方式+方法名 如在浏览器中使用get方式去访问register方法 那么这个路由会自动配置到这个类下面的getRegister方法。post也是一样&lt;/p&gt;
-
-&lt;h5 id="建立一个自己的注册页面"&gt;建立一个自己的注册页面&lt;/h5&gt;
-
-&lt;p&gt;我在AuthControlle里建立一个自己的视图&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;getRegister&lt;/span&gt;&lt;span class="p"&gt;(){&lt;/span&gt;
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;view&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;"auth.register"&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;上面已经说了路由的解析方式 只要配好路由就可以了&lt;/p&gt;
-
-&lt;h5 id="我们需要定义一个处理这个的注册处理类"&gt;我们需要定义一个处理这个的注册处理类&lt;/h5&gt;
-
-&lt;p&gt;接下来我会把所有的代码贴出来再代码中去讲解怎么重写 同样这个文件位于AuthController下&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;
-&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-&lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;postRegister&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;UserRegisterRequest&lt;/span&gt; &lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="p"&gt;){&lt;/span&gt;
-                       &lt;span class="c1"&gt;//验证通过 注册用户
-&lt;/span&gt;      &lt;span class="nv"&gt;$data&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;all&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-      &lt;span class="nv"&gt;$data&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'register_ip'&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;ip&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-
-      &lt;span class="nv"&gt;$user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt;  &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;registrar&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;create&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$data&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-      &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;redirect&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;intended&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'/'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-&lt;span class="p"&gt;}&lt;/span&gt;
-&lt;span class="cp"&gt;?&amp;gt;&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;大家会发现整个注册功能非常简单 那么具体可以在哪里做了注册的限制呢&lt;br&gt;
-其实是在UserRegisterRequest这个文件里去对所有填写的表单数据进行了控制&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
- &lt;span class="k"&gt;namespace&lt;/span&gt; &lt;span class="nx"&gt;App\Http\Requests&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-&lt;span class="k"&gt;use&lt;/span&gt; &lt;span class="nx"&gt;App\Http\Requests\Request&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;use&lt;/span&gt; &lt;span class="nx"&gt;Config&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;UserRegisterRequest&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nx"&gt;Request&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-
-  &lt;span class="sd"&gt;/**
-   * Determine if the user is authorized to make this request.
-   *
-   * @return bool
-   */&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;authorize&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="kc"&gt;true&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-  &lt;span class="sd"&gt;/**
-   * Get the validation rules that apply to the request.
-   *
-   * @return array
-   */&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;rules&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-             &lt;span class="c1"&gt;//自定义的电话号码正则表达式
-&lt;/span&gt;    &lt;span class="nv"&gt;$regex&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nx"&gt;Config&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="na"&gt;get&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'constant.phone_number_regex'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;
-      &lt;span class="c1"&gt;//对注册表单提交的信息进行验证
-&lt;/span&gt;      &lt;span class="s2"&gt;"username"&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'required'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'min:3'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'max:16'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'unique:users'&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;
-      &lt;span class="s2"&gt;"phone_number"&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'required'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'min:3'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'max:16'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'unique:users'&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;
-      &lt;span class="s2"&gt;"password"&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'required'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'min:6'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'max:16'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'confirmed'&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;
-      &lt;span class="s2"&gt;"verify_code"&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'required'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'digits:4'&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;
-
-    &lt;span class="p"&gt;];&lt;/span&gt; 
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;sanitize&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;all&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-&lt;span class="p"&gt;}&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;我们可以通过laravel自带的php artisan make:request 创建一个请求类&lt;br&gt;
-这个类可以对所有请求的数据进行控制，在rule里面定义好规则就可以控制请求的的数据，如果符合规则那么会继续访问。&lt;/p&gt;
-
-&lt;h4 id="改写注册添加数据操作"&gt;改写注册添加数据操作&lt;/h4&gt;
-
-&lt;p&gt;注册的目的就是为了将符合条件的数据写入用户表中 既然改写了请求的数据 那么自然也要改写请求的操作&lt;/p&gt;
-
-&lt;p&gt;注册成功后添加到用户数据库中 是在上面的 postRegister中的这一段代码来实现的&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-&lt;span class="nv"&gt;$user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt;  &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;registrar&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;create&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$data&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;找到这段代码  这段代码位于 services下的Registrar.php下&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;create&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="k"&gt;array&lt;/span&gt; &lt;span class="nv"&gt;$data&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-
-    &lt;span class="nv"&gt;$properties&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;
-      &lt;span class="s1"&gt;'username'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="nv"&gt;$data&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'username'&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;
-      &lt;span class="s1"&gt;'password'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="nx"&gt;bcrypt&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$data&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'password'&lt;/span&gt;&lt;span class="p"&gt;]),&lt;/span&gt;
-      &lt;span class="s1"&gt;'register_time'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="nx"&gt;Carbon&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="na"&gt;now&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;toDateTimeString&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt;
-      &lt;span class="s1"&gt;'register_ip'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="nv"&gt;$data&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'register_ip'&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
-    &lt;span class="p"&gt;];&lt;/span&gt;
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;User&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="na"&gt;create&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$properties&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-
-    &lt;span class="nv"&gt;$user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nx"&gt;User&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-    &lt;span class="nv"&gt;$user&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;save&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;将这个处理函数改成符合自己业务逻辑的函数就行了 &lt;/p&gt;
-
-&lt;hr&gt;
-
-&lt;p&gt;&lt;a href="https://phphub.org/topics/737"&gt;Laravel 一步步实现权限控制（2） 登录重写&lt;/a&gt;&lt;/p&gt;
 </content>
   </entry>
 </feed>
