@@ -4,10 +4,194 @@
   <id>http://blog.example.com</id>
   <link href="http://blog.example.com"/>
   <link href="http://blog.example.com/feed.xml" rel="self"/>
-  <updated>2015-07-06T23:45:00+08:00</updated>
+  <updated>2015-07-09T12:08:00+08:00</updated>
   <author>
     <name>Site Author</name>
   </author>
+  <entry>
+    <title>在coreos上用docker部署rails应用</title>
+    <link rel="alternate" href="http://blog.example.com/2015/07/09/deploy-docker-passenger-rails-in-coreos/"/>
+    <id>http://blog.example.com/2015/07/09/deploy-docker-passenger-rails-in-coreos/</id>
+    <published>2015-07-09T12:08:00+08:00</published>
+    <updated>2015-07-09T12:52:27+08:00</updated>
+    <summary type="html">&lt;h3 id="coreos上的配置"&gt;coreos上的配置&lt;/h3&gt;
+
+&lt;p&gt;coreos没有包管理工具，也不鼓励使用包管理工具来解决依赖关系，他提倡使用docker等容易来解决管理以来，要想搭建一个rails的环境，我们需要创建一个能满足我们需求的镜像。docker原则上是一个服务就需要一个镜像，不同的服务之间通讯需要使用docker自己提供的通讯方式，这个演示实例里，我们只依赖于一个数据库服务。首先我们需要创建我们整个rails运行环境所需要的所有服务镜像&lt;/p&gt;
+
+&lt;p&gt;postgres数据库的官方镜像&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+docker pull postgres
+
+&lt;/code&gt;&lt;/pre&gt;</summary>
+    <content type="html">&lt;h3 id="coreos上的配置"&gt;coreos上的配置&lt;/h3&gt;
+
+&lt;p&gt;coreos没有包管理工具，也不鼓励使用包管理工具来解决依赖关系，他提倡使用docker等容易来解决管理以来，要想搭建一个rails的环境，我们需要创建一个能满足我们需求的镜像。docker原则上是一个服务就需要一个镜像，不同的服务之间通讯需要使用docker自己提供的通讯方式，这个演示实例里，我们只依赖于一个数据库服务。首先我们需要创建我们整个rails运行环境所需要的所有服务镜像&lt;/p&gt;
+
+&lt;p&gt;postgres数据库的官方镜像&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+docker pull postgres
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;然后我们还需要运行rails的web服务器镜像，我选择的是passenger的官方镜像&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+docker pull phusion/passenger-ruby22
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;rails运行需要postgres数据库，因此，我们需要创建一个postgres容器,同时给我们创建的容器一个名称&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+docker run --name gamePostgres -d postgres
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这样一来我们在coreos上的配置就配置好了&lt;/p&gt;
+
+&lt;h3 id="dockerfile"&gt;Dockerfile&lt;/h3&gt;
+
+&lt;p&gt;将这个Dockerfile加入我们的rails项目下&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;
+&lt;span class="c1"&gt;# 以phusion/passenger-ruby22镜像为基础&lt;/span&gt;
+&lt;span class="no"&gt;FROM&lt;/span&gt; &lt;span class="n"&gt;phusion&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;passenger&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;ruby22&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 设置时区&lt;/span&gt;
+&lt;span class="no"&gt;RUN&lt;/span&gt; &lt;span class="n"&gt;echo&lt;/span&gt; &lt;span class="s2"&gt;"Asia/Shanghai"&lt;/span&gt; &lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="sr"&gt;/etc/&lt;/span&gt;&lt;span class="n"&gt;timezone&lt;/span&gt;
+&lt;span class="no"&gt;RUN&lt;/span&gt; &lt;span class="n"&gt;dpkg&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;reconfigure&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;f&lt;/span&gt; &lt;span class="n"&gt;noninteractive&lt;/span&gt; &lt;span class="n"&gt;tzdata&lt;/span&gt;
+
+&lt;span class="c1"&gt;#设置当前环境变量&lt;/span&gt;
+&lt;span class="no"&gt;ENV&lt;/span&gt; &lt;span class="no"&gt;HOME&lt;/span&gt; &lt;span class="sr"&gt;/root
+#设置rails环境为生产环境
+ENV RAILS_ENV production
+
+CMD ["/s&lt;/span&gt;&lt;span class="n"&gt;bin&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;my_init&lt;/span&gt;&lt;span class="s2"&gt;"]
+
+# 缓存gem，如果Gemfil没有改变将不会从源直接下载
+WORKDIR /tmp
+ADD ./Gemfile Gemfile
+ADD ./Gemfile.lock Gemfile.lock
+RUN bundle install
+
+#启动nginx
+RUN rm -f /etc/service/nginx/down
+#配置nginx
+RUN rm /etc/nginx/sites-enabled/default
+ADD nginx.conf /etc/nginx/sites-enabled/webapp.conf
+
+#添加环境文件
+ADD nginx-env.conf /etc/nginx/main.d/nginx-env.conf
+# 创建项目目录
+RUN mkdir /home/app/webapp
+# 将项目文件加入项目目录
+ADD . /home/app/webapp
+
+WORKDIR /home/app/webapp
+# 编译静态文件
+RUN rake assets:precompile
+
+# 清楚产生的缓存文件
+RUN apt-get clean &amp;amp;&amp;amp; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# 开放80端口
+EXPOSE 80
+
+
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;由于passenger镜像是建立在nginx的基础上地，所以我们需要配置nginx.同时在跟目录创建nginx.conf.&lt;/p&gt;
+&lt;pre class="highlight nginx"&gt;&lt;code&gt;
+&lt;span class="k"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kn"&gt;listen&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="c1"&gt;#指定项目根目录
+&lt;/span&gt;    &lt;span class="kn"&gt;root&lt;/span&gt; &lt;span class="n"&gt;/home/app/webapp/public&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+    &lt;span class="c1"&gt;# 开启passenger
+&lt;/span&gt;    &lt;span class="kn"&gt;passenger_enabled&lt;/span&gt; &lt;span class="no"&gt;on&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;passenger_user&lt;/span&gt; &lt;span class="s"&gt;app&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;client_max_body_size&lt;/span&gt; &lt;span class="mi"&gt;20M&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;passenger_max_request_queue_size&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在docker中服务通讯必须在容器之间暴露端口，因此我们需要添加env文件来暴露各容器之间的端口,在项目根目录下创建nginx-env.conf文件&lt;/p&gt;
+&lt;pre class="highlight nginx"&gt;&lt;code&gt;
+&lt;span class="c1"&gt;# 暴露服务端口 这个示例中只有postgres服务，因此我们只需要暴露这个端口即可
+&lt;/span&gt;&lt;span class="k"&gt;env&lt;/span&gt; &lt;span class="s"&gt;POSTGRES_PORT_5432_TCP_ADDR&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;env&lt;/span&gt; &lt;span class="s"&gt;POSTGRES_PORT_5432_TCP_PORT&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;最后，我们配置一下.gitignore，在.gitignore文件里加上,因为服务器的数据库配置和本地数据库配置不一样&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;/config/database.yml
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;同时copy一份database.yml，将其改名为database.yml.sample&lt;/p&gt;
+
+&lt;h3 id="在coreos上部署"&gt;在coreos上部署&lt;/h3&gt;
+
+&lt;p&gt;coreos虽然默认没有带包管理工具，但是安装了git之类的常用工具，因此，我们可以使用git部署我们的项目，将我们的项目上传到github，然后在coreos的某个目录将整个项目拉下来。我选择的是/root/apps目录&lt;/p&gt;
+
+&lt;p&gt;拉取项目后，我们首先需要更改的是数据库配置文件database.yml&lt;/p&gt;
+&lt;pre class="highlight yaml"&gt;&lt;code&gt;
+&lt;span class="s"&gt;default&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="nl"&gt;&amp;amp;default&lt;/span&gt;
+  &lt;span class="s"&gt;adapter&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;postgresql&lt;/span&gt;
+  &lt;span class="s"&gt;encoding&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;unicode&lt;/span&gt;
+  &lt;span class="s"&gt;pool&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;5&lt;/span&gt;
+  &lt;span class="s"&gt;timeout&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;5000&lt;/span&gt;
+  &lt;span class="s"&gt;username&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;postgres&lt;/span&gt;
+  &lt;span class="s"&gt;password&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+  &lt;span class="c1"&gt;# 通过暴露出来的地址和端口配置数据库&lt;/span&gt;
+  &lt;span class="s"&gt;host&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;lt;%= ENV['POSTGRES_PORT_5432_TCP_ADDR'] %&amp;gt;&lt;/span&gt;
+  &lt;span class="s"&gt;port&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;lt;%= ENV['POSTGRES_PORT_5432_TCP_PORT'] %&amp;gt;&lt;/span&gt;
+&lt;span class="s"&gt;development&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+  &lt;span class="s"&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="nv"&gt;*default&lt;/span&gt;
+  &lt;span class="s"&gt;database&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;sample_dev&lt;/span&gt;
+
+&lt;span class="c1"&gt;# Warning: The database defined as "test" will be erased and&lt;/span&gt;
+&lt;span class="c1"&gt;# re-generated from your development database when you run "rake".&lt;/span&gt;
+&lt;span class="c1"&gt;# Do not set this db to the same as development or production.&lt;/span&gt;
+&lt;span class="s"&gt;test&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+  &lt;span class="s"&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="nv"&gt;*default&lt;/span&gt;
+  &lt;span class="s"&gt;database&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;sample_test&lt;/span&gt;
+
+&lt;span class="s"&gt;production&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+  &lt;span class="s"&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="nv"&gt;*default&lt;/span&gt;
+  &lt;span class="s"&gt;database&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;sample_production&lt;/span&gt;
+
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;然后进入项目根目录，通过Dockfile构建一个镜像,并且给自己创建的镜像一个名称&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+docker build -t game/ruby_sample .
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;以后的每一次更改项目内容都需要重新构建一个新的镜像，如果你是第一次生成容器可以不用运行下面这条命令，如果你之前已经创建过同名的容易就需要将其删除，如我之前这个容器名为gameRuby_sample,那么我就需要将这个容器删除后重新创建&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+docker rm -f gameRuby_sample
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;创建新的容器，并且建立容器之间的通讯，监听服务器的80端口&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+docker run --name gameRuby_sample --link gamePostgres:postgres -d -p 80:80 game/ruby_sample
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;最后，进入这个容器运行migrate命令来创建数据库表&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+docker &lt;span class="nb"&gt;exec&lt;/span&gt; -ti gameRuby_sample bash
+
+&lt;/code&gt;&lt;/pre&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+rake db:migrate
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这样一来基本的rails运行环境就搭建完成了，更复杂的环境配置原理还是跟这个一样，后面部署的步骤可以用自定义的shell脚本来完成，这些读者们可以自己尝试下&lt;/p&gt;
+</content>
+  </entry>
   <entry>
     <title>coreos中更改docker镜像地址</title>
     <link rel="alternate" href="http://blog.example.com/2015/07/06/coreos-modify-docker-registry-mirror/"/>
@@ -973,89 +1157,6 @@ vim /opt/nginx/conf/nginx.conf&lt;br&gt;
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;这样一来密钥配置就完成了，重启&lt;code&gt;nginx&lt;/code&gt;就能成功访问到&lt;code&gt;rails&lt;/code&gt;项目了&lt;/p&gt;
-</content>
-  </entry>
-  <entry>
-    <title>centos7 服务器部署ssh证书授权登录</title>
-    <link rel="alternate" href="http://blog.example.com/2015/06/15/centos7-deploy-ssh/"/>
-    <id>http://blog.example.com/2015/06/15/centos7-deploy-ssh/</id>
-    <published>2015-06-15T22:57:00+08:00</published>
-    <updated>2015-06-30T14:25:15+08:00</updated>
-    <summary type="html">&lt;h3 id="使用ssh证书授权登录的必要性"&gt;使用ssh证书授权登录的必要性&lt;/h3&gt;
-
-&lt;p&gt;普通用户登录时，以往的做法往往是使用账号密码登录，但是这样的登录方式风险相当高，使用密钥登录能大大降低这个风险，这个密钥是针对每台计算机生成的独一无二的凭证，保存在登录用户的电脑中，只能通过登录用户电脑的证书授权才能登录服务器。&lt;/p&gt;
-
-&lt;h3 id="登录用户电脑操作"&gt;登录用户电脑操作&lt;/h3&gt;
-
-&lt;h4 id="建立~/.ssh目录（如果没有）"&gt;建立~/.ssh目录（如果没有）&lt;/h4&gt;
-&lt;pre class="highlight shell"&gt;&lt;code&gt;ls -al ~/.ssh
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h4 id="根据邮箱创建私钥"&gt;根据邮箱创建私钥&lt;/h4&gt;
-&lt;pre class="highlight shell"&gt;&lt;code&gt;ssh-keygen -t rsa -b 4096 -C &lt;span class="s2"&gt;&amp;quot;your_email@example.com&amp;quot;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;按照流程走完...&lt;/p&gt;</summary>
-    <content type="html">&lt;h3 id="使用ssh证书授权登录的必要性"&gt;使用ssh证书授权登录的必要性&lt;/h3&gt;
-
-&lt;p&gt;普通用户登录时，以往的做法往往是使用账号密码登录，但是这样的登录方式风险相当高，使用密钥登录能大大降低这个风险，这个密钥是针对每台计算机生成的独一无二的凭证，保存在登录用户的电脑中，只能通过登录用户电脑的证书授权才能登录服务器。&lt;/p&gt;
-
-&lt;h3 id="登录用户电脑操作"&gt;登录用户电脑操作&lt;/h3&gt;
-
-&lt;h4 id="建立~/.ssh目录（如果没有）"&gt;建立~/.ssh目录（如果没有）&lt;/h4&gt;
-&lt;pre class="highlight shell"&gt;&lt;code&gt;ls -al ~/.ssh
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h4 id="根据邮箱创建私钥"&gt;根据邮箱创建私钥&lt;/h4&gt;
-&lt;pre class="highlight shell"&gt;&lt;code&gt;ssh-keygen -t rsa -b 4096 -C &lt;span class="s2"&gt;"your_email@example.com"&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;按照流程走完后会在 ~/.ssh目录下看到id_rsa, id_rsa.pub文件 第一个是私有密钥 第二个是拥有密钥&lt;/p&gt;
-
-&lt;h4 id="复制id_rsa.pub中的内容（mac）"&gt;复制id_rsa.pub中的内容（mac）&lt;/h4&gt;
-&lt;pre class="highlight shell"&gt;&lt;code&gt;cat id_rsa.pub | pbcopy 
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h3 id="服务器配置(centos7)"&gt;服务器配置(centos7)&lt;/h3&gt;
-&lt;pre class="highlight shell"&gt;&lt;code&gt;vim /etc/ssh/sshd_config
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;将如下配置前的#号去掉&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="c1"&gt;#禁用root账户登录，非必要，但为了安全性，请配置,但是如果使用root用户一定要记得开启&lt;/span&gt;
-&lt;span class="no"&gt;PermitRootLogin&lt;/span&gt; &lt;span class="n"&gt;yes&lt;/span&gt;
-
-&lt;span class="c1"&gt;# 是否让 sshd 去检查用户家目录或相关档案的权限数据，&lt;/span&gt;
-&lt;span class="c1"&gt;# 这是为了担心使用者将某些重要档案的权限设错，可能会导致一些问题所致。&lt;/span&gt;
-&lt;span class="c1"&gt;# 例如使用者的 ~.ssh/ 权限设错时，某些特殊情况下会不许用户登入&lt;/span&gt;
-&lt;span class="no"&gt;StrictModes&lt;/span&gt; &lt;span class="n"&gt;no&lt;/span&gt;
-
-&lt;span class="c1"&gt;# 是否允许用户自行使用成对的密钥系统进行登入行为，仅针对 version 2。&lt;/span&gt;
-&lt;span class="c1"&gt;# 至于自制的公钥数据就放置于用户家目录下的 .ssh/authorized_keys 内&lt;/span&gt;
-&lt;span class="no"&gt;RSAAuthentication&lt;/span&gt; &lt;span class="n"&gt;yes&lt;/span&gt;
-&lt;span class="no"&gt;PubkeyAuthentication&lt;/span&gt; &lt;span class="n"&gt;yes&lt;/span&gt;
-&lt;span class="no"&gt;AuthorizedKeysFile&lt;/span&gt;      &lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;ssh&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;authorized_keys&lt;/span&gt;
-
-&lt;span class="c1"&gt;# 有了证书登录了，就禁用密码登录吧，安全要紧&lt;/span&gt;
-&lt;span class="no"&gt;PasswordAuthentication&lt;/span&gt; &lt;span class="n"&gt;no&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h4 id="将密钥写到一张文件去-如test-然后将这个文件导入-～/.ssh/authorized_keys"&gt;将密钥写到一张文件去 如test 然后将这个文件导入 ～/.ssh/authorized_keys&lt;/h4&gt;
-&lt;pre class="highlight shell"&gt;&lt;code&gt;cat &lt;span class="nb"&gt;test&lt;/span&gt; &amp;gt;&amp;gt; ～/.ssh/authorized_keys
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h4 id="启动ssh服务"&gt;启动ssh服务&lt;/h4&gt;
-&lt;pre class="highlight shell"&gt;&lt;code&gt;service sshd start
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;有可能会提示&lt;/p&gt;
-&lt;pre class="highlight shell"&gt;&lt;code&gt;Redirecting to /bin/systemctl start  sshd.service
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;只要按照提示操作就能开启ssh服务&lt;/p&gt;
-&lt;pre class="highlight shell"&gt;&lt;code&gt;/bin/systemctl start  sshd.service
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h4 id="这样一来在计算机持有密钥的情况下就可以不使用账号密码登录服务器了"&gt;这样一来在计算机持有密钥的情况下就可以不使用账号密码登录服务器了&lt;/h4&gt;
 </content>
   </entry>
 </feed>
