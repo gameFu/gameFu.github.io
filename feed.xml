@@ -13,7 +13,7 @@
     <link rel="alternate" href="http://blog.example.com/2015/07/09/deploy-docker-passenger-rails-in-coreos/"/>
     <id>http://blog.example.com/2015/07/09/deploy-docker-passenger-rails-in-coreos/</id>
     <published>2015-07-09T12:08:00+08:00</published>
-    <updated>2015-08-05T13:42:19+08:00</updated>
+    <updated>2015-08-05T13:43:44+08:00</updated>
     <summary type="html">&lt;h3 id="coreos上的配置"&gt;coreos上的配置&lt;/h3&gt;
 
 &lt;p&gt;coreos没有包管理工具，也不鼓励使用包管理工具来解决依赖关系，他提倡使用docker等容易来解决管理以来，要想搭建一个rails的环境，我们需要创建一个能满足我们需求的镜像。docker原则上是一个服务就需要一个镜像，不同的服务之间通讯需要使用docker自己提供的通讯方式，这个演示实例里，我们只依赖于一个数据库服务。首先我们需要创建我们整个rails运行环境所需要的所有服务镜像&lt;/p&gt;
@@ -186,7 +186,7 @@ docker run --name gameRuby_sample --link gamePostgres:postgres -d -p 80:80 game/
 
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;进行到这里，一个完整的rails容器已经建立完成了。然而整个容器还缺乏一个很关键的部分没解决，就是运行rails程序的migrate，由于，migrate必须在整个容器建立完成之后才能运行，因此无法直接将其写在&lt;code&gt;Dockerfile&lt;/code&gt;内，只有当运行容器时运行，才能有效果。&lt;br&gt;
+&lt;p&gt;进行到这里，一个完整的rails容器已经基本建立完成了。然而整个容器还缺乏一个很关键的部分没解决，就是运行rails程序的migrate，由于，migrate必须在整个容器建立完成之后才能运行，因此无法直接将其写在&lt;code&gt;Dockerfile&lt;/code&gt;内，只有当运行容器时运行，才能有效果。&lt;br&gt;
 passenger是根据ubuntu镜像的基础上搭建的，也就是说，这个系统的启动流程跟ubuntu启动的流程是一样的，当ubuntu系统完成引导后，操作系统会去检查/etc/my_init.d/目录下的脚本，并且会运行，这样一来，只需把migrate的执行脚本放到这个目录下面，那么就会在镜像启动的时候运行Migrate。&lt;/p&gt;
 &lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="c1"&gt;#增加初始化运行脚本&lt;/span&gt;
 &lt;span class="no"&gt;RUN&lt;/span&gt; &lt;span class="n"&gt;mkdir&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nb"&gt;p&lt;/span&gt; &lt;span class="sr"&gt;/etc/m&lt;/span&gt;&lt;span class="n"&gt;y_init&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;d&lt;/span&gt;

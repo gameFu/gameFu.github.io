@@ -161,7 +161,7 @@ docker run --name gameRuby_sample --link gamePostgres:postgres -d -p 80:80 game/
 
 </code></pre>
 
-<p>进行到这里，一个完整的rails容器已经建立完成了。然而整个容器还缺乏一个很关键的部分没解决，就是运行rails程序的migrate，由于，migrate必须在整个容器建立完成之后才能运行，因此无法直接将其写在<code>Dockerfile</code>内，只有当运行容器时运行，才能有效果。<br>
+<p>进行到这里，一个完整的rails容器已经基本建立完成了。然而整个容器还缺乏一个很关键的部分没解决，就是运行rails程序的migrate，由于，migrate必须在整个容器建立完成之后才能运行，因此无法直接将其写在<code>Dockerfile</code>内，只有当运行容器时运行，才能有效果。<br>
 passenger是根据ubuntu镜像的基础上搭建的，也就是说，这个系统的启动流程跟ubuntu启动的流程是一样的，当ubuntu系统完成引导后，操作系统会去检查/etc/my_init.d/目录下的脚本，并且会运行，这样一来，只需把migrate的执行脚本放到这个目录下面，那么就会在镜像启动的时候运行Migrate。</p>
 <pre class="highlight ruby"><code><span class="c1">#增加初始化运行脚本</span>
 <span class="no">RUN</span> <span class="n">mkdir</span> <span class="o">-</span><span class="nb">p</span> <span class="sr">/etc/m</span><span class="n">y_init</span><span class="p">.</span><span class="nf">d</span>
