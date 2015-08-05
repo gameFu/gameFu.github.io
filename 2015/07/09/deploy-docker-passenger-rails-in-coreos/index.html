@@ -54,6 +54,13 @@ ADD nginx.conf /etc/nginx/sites-enabled/webapp.conf
 
 #添加环境文件
 ADD nginx-env.conf /etc/nginx/main.d/nginx-env.conf
+
+#增加初始化运行脚本
+RUN mkdir -p /etc/my_init.d
+#Migrate
+ADD migrate.sh /etc/my_init.d/migrate.sh
+RUN chmod +x /etc/my_init.d/migrate.sh
+
 # 创建项目目录
 RUN mkdir /home/app/webapp
 # 将项目文件加入项目目录
@@ -154,15 +161,26 @@ docker run --name gameRuby_sample --link gamePostgres:postgres -d -p 80:80 game/
 
 </code></pre>
 
-<p>最后，进入这个容器运行migrate命令来创建数据库表</p>
-<pre class="highlight shell"><code>
-docker <span class="nb">exec</span> -ti gameRuby_sample bash
+<p>进行到这里，一个完整的rails容器已经建立完成了。然而整个容器还缺乏一个很关键的部分没解决，就是运行rails程序的migrate，由于，migrate必须在整个容器建立完成之后才能运行，因此无法直接将其写在<code>Dockerfile</code>内，只有当运行容器时运行，才能有效果。<br>
+passenger是根据ubuntu镜像的基础上搭建的，也就是说，这个系统的启动流程跟ubuntu启动的流程是一样的，当ubuntu系统完成引导后，操作系统会去检查/etc/my_init.d/目录下的脚本，并且会运行，这样一来，只需把migrate的执行脚本放到这个目录下面，那么就会在镜像启动的时候运行Migrate。</p>
+<pre class="highlight ruby"><code><span class="c1">#增加初始化运行脚本</span>
+<span class="no">RUN</span> <span class="n">mkdir</span> <span class="o">-</span><span class="nb">p</span> <span class="sr">/etc/m</span><span class="n">y_init</span><span class="p">.</span><span class="nf">d</span>
+<span class="c1">#Migrate</span>
+<span class="no">ADD</span> <span class="n">migrate</span><span class="p">.</span><span class="nf">sh</span> <span class="sr">/etc/m</span><span class="n">y_init</span><span class="p">.</span><span class="nf">d</span><span class="o">/</span><span class="n">migrate</span><span class="p">.</span><span class="nf">sh</span>
+<span class="no">RUN</span> <span class="n">chmod</span> <span class="o">+</span><span class="n">x</span> <span class="sr">/etc/m</span><span class="n">y_init</span><span class="p">.</span><span class="nf">d</span><span class="o">/</span><span class="n">migrate</span><span class="p">.</span><span class="nf">sh</span>
 
 </code></pre>
+
+<p>下面是migrate运行脚本</p>
 <pre class="highlight shell"><code>
-rake db:migrate
+<span class="c">#!/bin/sh</span>
+<span class="nb">echo</span> <span class="s2">"start migrate"</span>
+bash -c <span class="s1">'cd /home/app/webapp; bundle exec rake db:migrate'</span>;
+<span class="nb">echo</span> <span class="s2">"migrate finshed"</span>
 
 </code></pre>
 
-<p>这样一来基本的rails运行环境就搭建完成了，更复杂的环境配置原理还是跟这个一样，后面部署的步骤可以用自定义的shell脚本来完成，这些读者们可以自己尝试下</p>
+<p>只要运行docker run后，运行<code>docker logs -f 镜像名</code>，能看到<code>start migrate</code>和<code>migrate finshed</code>就说明镜像已经成功运行migrate了 </p>
+
+<p>这样一来基本的rails运行环境就搭建完成了</p>
 <div class="social"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2015 <a href="/">gameFu's Blog</a> - Site Author</div></div></footer></body></html>
