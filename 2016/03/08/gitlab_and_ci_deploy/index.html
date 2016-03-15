@@ -1,0 +1,133 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><meta content="initial-scale=1.0, user-scalable=no" name="viewport" /><title>centos7下完整配置gitlab及gitlab-ci docker测试 | gameFu's Blog</title><meta description="gitlab下载  由于直接从官方渠道下载会遭遇被墙的情况，因此，先更换成中国镜像，再进行下载安装  参照gitlab中国镜像下载  安装完成后运行下面命令，配置gitlab gitlab-ctl reconfigure    gitlab服务  开启gitlab服务  gitlab-ctl start    停止gitlab服务  gitlab-ctl stop    重启gitlab服务 gitlab-ctl restart    开启rails控制台 gitlab-rails console..." /><link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" /><link href="../../../../stylesheets/all-d495412b.css" rel="stylesheet" type="text/css" /><link href="../../../../images/favicon-6c3f3d04.png" rel="icon" type="image/png" /></head><body><header><div id="top-menu"><div class="top-menu-wrapper"><div class="top-menu-list"><ul><li><a href="/">Home</a></li><li><a href="/archives/">Archives</a></li><li><a href="/tags/">Tags</a></li><li><a href="/by-year/">By Year</a></li></ul></div><div class="feed"><a href="/feed.xml"><i class="fa fa-rss-square"></i></a></div></div></div><h1 class="logo"><a href="/" title="gameFu's Blog"><span class="logo-text">gameFu's Blog</span></a></h1></header><main><article><h1 class="article-title">centos7下完整配置gitlab及gitlab-ci docker测试</h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">March 08, 2016</span></div><div class="tag-labels"><a href="/tags/ruby/"><small class="tag-label">ruby</small></a><a href="/tags/gitlab,-centos-7/"><small class="tag-label">gitlab， centos 7</small></a></div><hr class="article-header-separator" /><h3 id="gitlab下载">gitlab下载</h3>
+
+<p>由于直接从官方渠道下载会遭遇被墙的情况，因此，先更换成中国镜像，再进行下载安装</p>
+
+<p>参照<a href="https://mirror.tuna.tsinghua.edu.cn/help/gitlab-ce/">gitlab中国镜像下载</a></p>
+
+<p>安装完成后运行下面命令，配置gitlab</p>
+<pre class="highlight plaintext"><code>gitlab-ctl reconfigure
+
+</code></pre>
+
+<h3 id="gitlab服务">gitlab服务</h3>
+
+<h4 id="开启gitlab服务">开启gitlab服务</h4>
+<pre class="highlight plaintext"><code>
+gitlab-ctl start
+
+</code></pre>
+
+<h4 id="停止gitlab服务">停止gitlab服务</h4>
+<pre class="highlight plaintext"><code>
+gitlab-ctl stop
+
+</code></pre>
+
+<h4 id="重启gitlab服务">重启gitlab服务</h4>
+<pre class="highlight plaintext"><code>gitlab-ctl restart
+
+</code></pre>
+
+<h4 id="开启rails控制台">开启rails控制台</h4>
+<pre class="highlight plaintext"><code>gitlab-rails console
+
+</code></pre>
+
+<h3 id="配置gitlab服务">配置gitlab服务</h3>
+
+<p>首先需要修改gitlab的external_url，external_url是gitlab默认仓库的host地址，我们需要将其改成外网可以访问的地址，如ip</p>
+<pre class="highlight plaintext"><code>
+vim /etc/gitlab/gitlab.rb
+
+</code></pre>
+<pre class="highlight ruby"><code>
+<span class="n">external_url</span> <span class="s1">'http://121.201.63.89'</span>
+
+</code></pre>
+
+<p>接着，我们需要配置一下smtp服务器，同样在gitlab.rb</p>
+<pre class="highlight ruby"><code>
+<span class="c1"># 配置smtp服务器信息</span>
+<span class="n">gitlab_rails</span><span class="p">[</span><span class="s1">'smtp_enable'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">true</span>
+<span class="n">gitlab_rails</span><span class="p">[</span><span class="s1">'smtp_address'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"smtp.163.com"</span>
+<span class="n">gitlab_rails</span><span class="p">[</span><span class="s1">'smtp_port'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">25</span>
+<span class="n">gitlab_rails</span><span class="p">[</span><span class="s1">'smtp_user_name'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"xxuser@163.com"</span>
+<span class="n">gitlab_rails</span><span class="p">[</span><span class="s1">'smtp_password'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"xxpassword"</span>
+<span class="n">gitlab_rails</span><span class="p">[</span><span class="s1">'smtp_domain'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"163.com"</span>
+<span class="n">gitlab_rails</span><span class="p">[</span><span class="s1">'smtp_authentication'</span><span class="p">]</span> <span class="o">=</span> <span class="ss">:login</span>
+<span class="n">gitlab_rails</span><span class="p">[</span><span class="s1">'smtp_enable_starttls_auto'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">true</span>
+
+<span class="c1"># 配置发送人信息</span>
+<span class="n">gitlab_rails</span><span class="p">[</span><span class="s1">'gitlab_email_from'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"xxuser@163.com"</span>
+<span class="n">user</span><span class="p">[</span><span class="s2">"git_user_email"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"xxuser@163.com"</span>
+
+</code></pre>
+
+<p>gitlab读取最新更改配置</p>
+<pre class="highlight plaintext"><code>gitlab-ctl reconfigure
+
+</code></pre>
+
+<h3 id="配置gitlab-ci">配置gitlab-ci</h3>
+
+<h4 id="添加.gitlab-ci.yml-到项目下">添加.gitlab-ci.yml 到项目下</h4>
+
+<h4 id="配置gitlab-ci-runner">配置gitlab-ci runner</h4>
+
+<p>gitlab-ci runner是负责运行ci测试的服务， runner可以执行多个项目的ci测试</p>
+
+<p>首先需要先安装gitlab-ci runner</p>
+
+<p>runner 有许多种形式，这里我们使用了docker的形式运行，使用docker运行有几点好处，一是不用再runner环境下配置ruby运行需要的所有依赖库，降低了配置的难度，同时也避免了由于操作系统，源等差异带来的版本冲突问题</p>
+
+<p>参照<a href="https://gitlab.com/gitlab-org/gitlab-ci-multi-runner/blob/master/docs/install/docker.md">Install as Docker Service</a></p>
+
+<h5 id="note">note</h5>
+
+<p>如果遇到<br>
+```<br>
+ERROR: Build failed with: Get <a href="http://unix.sock/v1.18/version:">http://unix.sock/v1.18/version:</a> dial unix /var/run/docker.sock: no such file or directory</p>
+<pre class="highlight plaintext"><code>
+这是因为没有把docker.sock挂载到容器里，导致无法拉取镜像
+
+这时，run gitlab-runner容器时，需要指定挂载docker.sock
+
+</code></pre>
+
+<p>docker run -d --name gitlab-runner --restart always \<br>
+  -v /var/run/docker.sock:/var/run/docker.sock \<br>
+  -v /srv/gitlab-runner/config:/etc/gitlab-runner \<br>
+  gitlab/gitlab-runner:latest</p>
+<pre class="highlight plaintext"><code>
+
+#### 配置.gitlab-ci.yml
+
+```yaml
+
+# 主镜像
+image: docker.baozou.com/baozou/dashijian:base
+services:
+  # 依赖的镜像
+  - mysql:latest
+# 环境变量
+variables:
+  # Configure mysql environment variables (https://hub.docker.com/_/mysql/)
+  MYSQL_DATABASE: action_cabel
+  MYSQL_ROOT_PASSWORD: '63292590'
+
+test:
+  script:
+    # 拉取子模块
+    - git submodule update --init
+    # 在gitlab docker runner中/cache是会被挂在容器外面的地方，将bundle下来的gem包安装在这个地方，能避免test每次bundle的时候都重新拉下完整的gem
+    - bundle install --path=/cache
+    - RAILS_ENV=test DB_HOST=mysql DB_NAME=action_cable bundle exec rake db:drop
+    - RAILS_ENV=test DB_HOST=mysql DB_NAME=action_cable bundle exec rake db:create
+    - RAILS_ENV=test DB_HOST=mysql DB_NAME=action_cable bundle exec rake db:migrate
+    - RAILS_ENV=test DB_HOST=mysql DB_NAME=action_cable bundle exec rake test
+  tags:
+    - docker-test
+
+
+</code></pre>
+<div class="social"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2016 <a href="/">gameFu's Blog</a> - Site Author</div></div></footer></body></html>

@@ -1,4 +1,35 @@
-<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><meta content="initial-scale=1.0, user-scalable=no" name="viewport" /><title>gameFu's Blog</title><meta description="Site Description" /><link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" /><link href="stylesheets/all-d495412b.css" rel="stylesheet" type="text/css" /><link href="images/favicon-6c3f3d04.png" rel="icon" type="image/png" /></head><body><header><div id="top-menu"><div class="top-menu-wrapper"><div class="top-menu-list"><ul><li><a href="/">Home</a></li><li><a href="/archives/">Archives</a></li><li><a href="/tags/">Tags</a></li><li><a href="/by-year/">By Year</a></li></ul></div><div class="feed"><a href="/feed.xml"><i class="fa fa-rss-square"></i></a></div></div></div><h1 class="logo"><a href="/" title="gameFu's Blog"><span class="logo-text">gameFu's Blog</span></a></h1></header><main><article><h1 class="article-title"><a href="/2015/07/09/deploy-docker-passenger-rails-in-coreos/">在coreos上用docker部署rails应用</a></h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">July 09, 2015</span></div><div class="tag-labels"><a href="/tags/docker/"><small class="tag-label">docker</small></a><a href="/tags/ruby-on-rails/"><small class="tag-label">ruby on rails</small></a><a href="/tags/coreos/"><small class="tag-label">coreos</small></a></div><hr class="article-header-separator" /><h3 id="coreos上的配置">coreos上的配置</h3>
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><meta content="initial-scale=1.0, user-scalable=no" name="viewport" /><title>gameFu's Blog</title><meta description="Site Description" /><link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" /><link href="stylesheets/all-d495412b.css" rel="stylesheet" type="text/css" /><link href="images/favicon-6c3f3d04.png" rel="icon" type="image/png" /></head><body><header><div id="top-menu"><div class="top-menu-wrapper"><div class="top-menu-list"><ul><li><a href="/">Home</a></li><li><a href="/archives/">Archives</a></li><li><a href="/tags/">Tags</a></li><li><a href="/by-year/">By Year</a></li></ul></div><div class="feed"><a href="/feed.xml"><i class="fa fa-rss-square"></i></a></div></div></div><h1 class="logo"><a href="/" title="gameFu's Blog"><span class="logo-text">gameFu's Blog</span></a></h1></header><main><article><h1 class="article-title"><a href="/2016/03/08/gitlab_and_ci_deploy/">centos7下完整配置gitlab及gitlab-ci docker测试</a></h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">March 08, 2016</span></div><div class="tag-labels"><a href="/tags/ruby/"><small class="tag-label">ruby</small></a><a href="/tags/gitlab,-centos-7/"><small class="tag-label">gitlab， centos 7</small></a></div><hr class="article-header-separator" /><h3 id="gitlab下载">gitlab下载</h3>
+
+<p>由于直接从官方渠道下载会遭遇被墙的情况，因此，先更换成中国镜像，再进行下载安装</p>
+
+<p>参照<a href="https://mirror.tuna.tsinghua.edu.cn/help/gitlab-ce/">gitlab中国镜像下载</a></p>
+
+<p>安装完成后运行下面命令，配置gitlab</p>
+<pre class="highlight plaintext"><code>gitlab-ctl reconfigure
+
+</code></pre>
+
+<h3 id="gitlab服务">gitlab服务</h3>
+
+<h4 id="开启gitlab服务">开启gitlab服务</h4>
+<pre class="highlight plaintext"><code>
+gitlab-ctl start
+
+</code></pre>
+
+<h4 id="停止gitlab服务">停止gitlab服务</h4>
+<pre class="highlight plaintext"><code>
+gitlab-ctl stop
+
+</code></pre>
+
+<h4 id="重启gitlab服务">重启gitlab服务</h4>
+<pre class="highlight plaintext"><code>gitlab-ctl restart
+
+</code></pre>
+
+<h4 id="开启rails控制台">开启rails控制台</h4>
+<pre class="highlight plaintext"><code>gitlab-rails console...</code></pre><div class="read-more"><a href="/2016/03/08/gitlab_and_ci_deploy/">Read More <i class="fa fa-angle-double-right"></i></a></div><hr class="article-separator" /><h1 class="article-title"><a href="/2015/07/09/deploy-docker-passenger-rails-in-coreos/">在coreos上用docker部署rails应用</a></h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">July 09, 2015</span></div><div class="tag-labels"><a href="/tags/docker/"><small class="tag-label">docker</small></a><a href="/tags/ruby-on-rails/"><small class="tag-label">ruby on rails</small></a><a href="/tags/coreos/"><small class="tag-label">coreos</small></a></div><hr class="article-header-separator" /><h3 id="coreos上的配置">coreos上的配置</h3>
 
 <p>coreos没有包管理工具，也不鼓励使用包管理工具来解决依赖关系，他提倡使用docker等容易来解决管理以来，要想搭建一个rails的环境，我们需要创建一个能满足我们需求的镜像。docker原则上是一个服务就需要一个镜像，不同的服务之间通讯需要使用docker自己提供的通讯方式，这个演示实例里，我们只依赖于一个数据库服务。首先我们需要创建我们整个rails运行环境所需要的所有服务镜像</p>
 
@@ -73,4 +104,4 @@ docker pull postgres
 
 <p>使用<code>jsonb</code>的优势在于你可以轻易的整合关系型数据和非关系型数据，<a href="http://obartunov.livejournal.com/175235.html">在性能方面，可以比大多数类似于MongoDB这样的非关系数据库更好</a></p>
 
-<h4 id="理解json和jsonb之间的不同"><strong>理解json和jsonb之间的不...</strong></h4><div class="read-more"><a href="/2015/06/09/postgresql-9-4-jsonb/">Read More <i class="fa fa-angle-double-right"></i></a></div><hr class="article-separator" /><div class="paginate-wrapper"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2015 <a href="/">gameFu's Blog</a> - Site Author</div></div></footer></body></html>
+<h4 id="理解json和jsonb之间的不同"><strong>理解json和jsonb之间的不...</strong></h4><div class="read-more"><a href="/2015/06/09/postgresql-9-4-jsonb/">Read More <i class="fa fa-angle-double-right"></i></a></div><hr class="article-separator" /><div class="paginate-wrapper"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2016 <a href="/">gameFu's Blog</a> - Site Author</div></div></footer></body></html>
