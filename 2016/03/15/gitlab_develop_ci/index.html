@@ -1,0 +1,91 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><meta content="initial-scale=1.0, user-scalable=no" name="viewport" /><title>gitlab_develop_ci | gameFu's Blog</title><meta description="使用ci将项目部署到服务器  runner配置  这篇文章中的服务器环境使用的是coreos，部署也是在docker中进行。runner是依然采用了上篇文章中使用的docker-runner执行  在runner服务器上执行下面这段命令，生成执行ci的docker docker run -d --name gitlab-runner1 --restart always \              -v /var/run/docker.sock:/var/run/docker.sock \..." /><link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" /><link href="../../../../stylesheets/all-d495412b.css" rel="stylesheet" type="text/css" /><link href="../../../../images/favicon-6c3f3d04.png" rel="icon" type="image/png" /></head><body><header><div id="top-menu"><div class="top-menu-wrapper"><div class="top-menu-list"><ul><li><a href="/">Home</a></li><li><a href="/archives/">Archives</a></li><li><a href="/tags/">Tags</a></li><li><a href="/by-year/">By Year</a></li></ul></div><div class="feed"><a href="/feed.xml"><i class="fa fa-rss-square"></i></a></div></div></div><h1 class="logo"><a href="/" title="gameFu's Blog"><span class="logo-text">gameFu's Blog</span></a></h1></header><main><article><h1 class="article-title">gitlab_develop_ci</h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">March 15, 2016</span></div><div class="tag-labels"><a href="/tags/gitlab/"><small class="tag-label">gitlab</small></a><a href="/tags/docker/"><small class="tag-label">docker</small></a></div><hr class="article-header-separator" /><h3 id="使用ci将项目部署到服务器">使用ci将项目部署到服务器</h3>
+
+<h4 id="runner配置">runner配置</h4>
+
+<p>这篇文章中的服务器环境使用的是coreos，部署也是在docker中进行。runner是依然采用了上篇文章中使用的docker-runner执行</p>
+
+<p>在runner服务器上执行下面这段命令，生成执行ci的docker</p>
+<pre class="highlight plaintext"><code>docker run -d --name gitlab-runner1 --restart always \
+             -v /var/run/docker.sock:/var/run/docker.sock \
+             -v /srv/gitlab-runner/config:/etc/gitlab-runner \
+             -v /root/.ssh/id_rsa:/root/id_rsa \
+             gitlab/gitlab-runner:latest
+
+</code></pre>
+
+<p>这里需要重点解释的是 <code>-v /root/.ssh/id_rsa:/root/id_rsa \</code>，这个命令会将runner服务器上的私钥挂载到容器里面，这么做的原因是执行部署的时候需要ssh连接到目标服务器上，必须先将服务器私钥挂载进去才能在docker里面连接到服务器(这种方法并不好)。当然，首先我们需要在服务器上配好密钥，并且将公钥放到目标服务器上，这里就不详细解释怎么做了。</p>
+
+<p>接下来运行<code>docker exec -it gitlab-runner gitlab-runner register</code> 进行runner注册，我使用的executor是ssh，使用这个executor可以远程连接到目标服务器并进行操作</p>
+<pre class="highlight plaintext"><code>Please enter the gitlab-ci tags for this runner (comma separated):
+docker-develop
+Registering runner... succeeded                     runner=_m_ivm6R
+Please enter the executor: ssh, shell, parallels, docker, docker-ssh, virtualbox:
+ssh
+Please enter the SSH server address (eg. my.server.com):
+xxxxx
+Please enter the SSH server port (eg. 22):
+22
+Please enter the SSH user (eg. root):
+root
+Please enter the SSH password (eg. docker.io):
+
+Please enter path to SSH identity file (eg. /home/user/.ssh/id_rsa):
+/root/id_rsa
+
+</code></pre>
+
+<p>注意：最后要求填入SSH identity file的路径是指容器内id_rsa的路径，而不是runner服务器的id_rsa的路径</p>
+
+<p>如果需要修改runner的配置，可以去find config.toml ,里面配置了runner的所有信息</p>
+
+<h4 id="deploy.sh">deploy.sh</h4>
+
+<p>这里我将部署的工作写在了bash脚本里，然后执行ci时，直接执行这段脚本即可，这里只演示最简单的部署工作</p>
+<pre class="highlight shell"><code>
+<span class="c">#!/bin/bash</span>
+<span class="nv">containerName</span><span class="o">=</span>action_cable
+<span class="nv">imageName</span><span class="o">=</span>daocloud.io/gamefu/action_cable:latest
+
+<span class="nb">echo</span> <span class="s2">"镜像名{</span><span class="nv">$imageName</span><span class="s2">}"</span>
+
+<span class="c"># 拉取最新镜像</span>
+docker pull <span class="nv">$imageName</span>
+<span class="c"># 删除老容器</span>
+docker stop <span class="nv">$containerName</span>
+docker rm <span class="nv">$containerName</span>
+<span class="c"># 运行新容器</span>
+docker run --name <span class="nv">$containerName</span> <span class="se">\</span>
+          -e <span class="nv">LANG</span><span class="o">=</span>C.UTF-8 <span class="se">\</span>
+          -e <span class="nv">RAILS_ENV</span><span class="o">=</span>production <span class="se">\</span>
+          --link action_cable_mysql:mysql <span class="se">\</span>
+          -d <span class="nv">$imageName</span>
+
+
+</code></pre>
+
+<h4 id=".gitlab-ci.yml">.gitlab-ci.yml</h4>
+
+<p>ci设置</p>
+<pre class="highlight yaml"><code>
+<span class="s">staging_build</span><span class="pi">:</span>
+  <span class="s">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">source stag_deploy.sh</span>
+  <span class="s">only</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">develop</span>
+  <span class="s">tags</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker-develop</span>
+  <span class="s">type</span><span class="pi">:</span> <span class="s">deploy</span>
+
+
+</code></pre>
+
+<p>only设置只有在develop分支合并或者push新内容时，执行这个ci</p>
+
+<p>这样一来基本的ci部署完成了。。</p>
+
+<h3 id="总结">总结</h3>
+
+<p>这篇文章算是我在爬坑的记录，后来我跟同事讨论，并且仔细一想之后，有几点觉得可以改进，首先是runner，由于ci做部署的时候，需要使用ssh连接到服务器，所以executor需要用ssh,而ssh本来就不应该运行到docker runner里面，而是应该直接运行到runner服务器上，这样就避免了很多像id_rsa找不到的各种坑，以及在做测试的时候遇到需要docker-login的时候，需要将/root/.docker/config.json挂载到docker里面的情况</p>
+
+<p>经过这次爬坑后，个人觉得，runner应该直接安装在服务器上，test-ci使用docker executor，使用docker executor就能避免很多环境依赖问题, develop-ci使用ssh executor是更加合理的做法</p>
+<div class="social"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2016 <a href="/">gameFu's Blog</a> - Site Author</div></div></footer></body></html>

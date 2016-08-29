@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><meta content="initial-scale=1.0, user-scalable=no" name="viewport" /><title>nginx https http端口转发 和 cors | gameFu's Blog</title><meta description="nginx https配置  https的使用需要申请证书，证书需要去专门的CA申请，但是个人网站建议使用免费证书，可以节省不少费用，国内的免费证书申请网站有https://www.wosign.com/。国外的免费证书申请网站有Let&apos;s Encrypt,但是Let&apos;s Encrypt的免费证书有效期只有90天，如果想长时间使用需要写定时脚本不断更新证书，具体操作可以看这篇博客.  nginx上配置https比较简单只需要拿到crt证书，和证书的私钥在nginx上几行代码就可配置了 listen..." /><link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" /><link href="../../../../stylesheets/all-d495412b.css" rel="stylesheet" type="text/css" /><link href="../../../../images/favicon-6c3f3d04.png" rel="icon" type="image/png" /></head><body><header><div id="top-menu"><div class="top-menu-wrapper"><div class="top-menu-list"><ul><li><a href="/">Home</a></li><li><a href="/archives/">Archives</a></li><li><a href="/tags/">Tags</a></li><li><a href="/by-year/">By Year</a></li></ul></div><div class="feed"><a href="/feed.xml"><i class="fa fa-rss-square"></i></a></div></div></div><h1 class="logo"><a href="/" title="gameFu's Blog"><span class="logo-text">gameFu's Blog</span></a></h1></header><main><article><h1 class="article-title">nginx https http端口转发 和 cors</h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">April 14, 2016</span></div><div class="tag-labels"></div><hr class="article-header-separator" /><h3 id="nginx-https配置">nginx https配置</h3>
+
+<p>https的使用需要申请证书，证书需要去专门的CA申请，但是个人网站建议使用免费证书，可以节省不少费用，国内的免费证书申请网站有<a href="https://www.wosign.com/">https://www.wosign.com/</a>。国外的免费证书申请网站有<a href="https://letsencrypt.org/">Let&#39;s Encrypt</a>,但是Let&#39;s Encrypt的免费证书有效期只有90天，如果想长时间使用需要写定时脚本不断更新证书，具体操作可以看<a href="https://imququ.com/post/letsencrypt-certificate.html">这篇博客</a>.</p>
+
+<p>nginx上配置https比较简单只需要拿到crt证书，和证书的私钥在nginx上几行代码就可配置了</p>
+<pre class="highlight plaintext"><code>listen 443;
+ssl on;
+ssl_certificate dsjstage.bao.tv_bundle.crt;
+ssl_certificate_key dsjstage.bao.tv.key;
+
+</code></pre>
+
+<h3 id="https-和-http的端口转发">https 和 http的端口转发</h3>
+<pre class="highlight plaintext"><code>
+return 301 https://$host$request_uri;
+
+</code></pre>
+
+<h3 id="nginx-cors-配置">nginx cors 配置</h3>
+
+<p>js跨域问题是在实际开发中经常会遇到的情况，使用nginx解决跨越问题十分的方便。</p>
+
+<p>nginx实现跨域的简单流程是对于简单请求，如GET，只需要在HTTP Response后添加Access-Control-Allow-Origin。<br>
+对于非简单请求，比如POST、PUT、DELETE等，浏览器会分两次应答。第一次preflight（method: OPTIONS），主要验证来源是否合法，并返回允许的Header等。第二次才是真正的HTTP应答。所以服务器必须处理OPTIONS应答。OPTIONS请求要做204处理。</p>
+
+<p>接下来是各个参数</p>
+
+<p>Access-Control-Allow-Origin（必含） – 允许的域名，只能填通配符或者单域名(尽量不要使用通配符)<br>
+Access-Control-Allow-Methods（必含） – 这允许跨域请求的http方法（常见有POST、GET、OPTIONS）<br>
+Access-Control-Allow-Headers（当预请求中包含Access-Control-Request-Headers时必须包含） – 这是对预请求当中Access-Control-Request-Headers的回复，和上面一样是以逗号分隔的列表，可以返回所有支持的头部。（设置时要注意查看http请求头的参数）<br>
+Access-Control-Allow-Credentials（可选） – 该项标志着请求当中是否包含cookies信息，只有一个可选值：true（必为小写）。如果不包含cookies，请略去该项，而不是填写false。这一项与XmlHttpRequest2对象当中的withCredentials属性应保持一致，即withCredentials为true时该项也为true；withCredentials为false时，省略该项不写。反之则导致请求失败。<br>
+Access-Control-Max-Age（可选） – 以秒为单位的缓存时间。预请求的的发送并非免费午餐，允许时应当尽可能缓存。</p>
+<pre class="highlight nginx"><code>
+     <span class="k">add_header</span> <span class="s">'Access-Control-Allow-Origin'</span> <span class="s">'xxxx'</span><span class="p">;</span>
+     <span class="k">add_header</span> <span class="s">'Access-Control-Allow-Credentials'</span> <span class="s">'true'</span><span class="p">;</span>
+     <span class="k">add_header</span> <span class="s">'Access-Control-Allow-Methods'</span> <span class="s">'GET,</span> <span class="s">POST,</span> <span class="s">DELETE,</span> <span class="s">PUT,</span> <span class="s">OPTIONS'</span><span class="p">;</span>
+     <span class="k">add_header</span> <span class="s">'Access-Control-Allow-Headers'</span> <span class="s">'Accept,</span> <span class="s">Authorization,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type'</span><span class="p">;</span>
+     <span class="k">if</span> <span class="s">(</span><span class="nv">$request_method</span> <span class="p">=</span> <span class="s">'OPTIONS')</span> <span class="p">{</span>
+       <span class="kn">add_header</span> <span class="s">'Access-Control-Allow-Origin'</span> <span class="s">'xxxx'</span><span class="p">;</span>
+       <span class="kn">add_header</span> <span class="s">'Access-Control-Max-Age'</span> <span class="mi">1728000</span><span class="p">;</span>
+       <span class="kn">add_header</span> <span class="s">'Access-Control-Allow-Credentials'</span> <span class="s">'true'</span><span class="p">;</span>
+       <span class="kn">add_header</span> <span class="s">'Access-Control-Allow-Methods'</span> <span class="s">'GET,</span> <span class="s">POST,</span> <span class="s">DELETE,</span> <span class="s">PUT,</span> <span class="s">OPTIONS'</span><span class="p">;</span>
+       <span class="kn">add_header</span> <span class="s">'Access-Control-Allow-Headers'</span> <span class="s">'Accept,</span> <span class="s">Authorization,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type'</span><span class="p">;</span>
+       <span class="kn">add_header</span> <span class="s">'Content-Type'</span> <span class="s">'text/plain</span> <span class="s">charset=UTF-8'</span><span class="p">;</span>
+       <span class="kn">add_header</span> <span class="s">'Content-Length'</span> <span class="mi">0</span><span class="p">;</span>
+       <span class="kn">return</span> <span class="mi">204</span><span class="p">;</span>
+     <span class="p">}</span>
+
+
+
+</code></pre>
+<div class="social"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2016 <a href="/">gameFu's Blog</a> - Site Author</div></div></footer></body></html>

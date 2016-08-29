@@ -4,10 +4,182 @@
   <id>http://blog.example.com</id>
   <link href="http://blog.example.com"/>
   <link href="http://blog.example.com/feed.xml" rel="self"/>
-  <updated>2016-03-08T22:36:00+08:00</updated>
+  <updated>2016-04-14T16:03:00+08:00</updated>
   <author>
     <name>Site Author</name>
   </author>
+  <entry>
+    <title>nginx https http端口转发 和 cors</title>
+    <link rel="alternate" href="http://blog.example.com/2016/04/14/nginx-https-and-cors/"/>
+    <id>http://blog.example.com/2016/04/14/nginx-https-and-cors/</id>
+    <published>2016-04-14T16:03:00+08:00</published>
+    <updated>2016-04-14T16:53:43+08:00</updated>
+    <summary type="html">&lt;h3 id="nginx-https配置"&gt;nginx https配置&lt;/h3&gt;
+
+&lt;p&gt;https的使用需要申请证书，证书需要去专门的CA申请，但是个人网站建议使用免费证书，可以节省不少费用，国内的免费证书申请网站有&lt;a href="https://www.wosign.com/"&gt;https://www.wosign.com/&lt;/a&gt;。国外的免费证书申请网站有&lt;a href="https://letsencrypt.org/"&gt;Let&amp;apos;s Encrypt&lt;/a&gt;,但是Let&amp;apos;s Encrypt的免费证书有效期只有90天，如果想长时间使用需要写定时脚本不断更新证书，具体操作可以看&lt;a href="https://imququ.com/post/letsencrypt-certificate.html"&gt;这篇博客&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;nginx上配置https比较简单只需要拿到crt证书，和证书的私钥在nginx上几行代码就可配置了&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;listen...&lt;/code&gt;&lt;/pre&gt;</summary>
+    <content type="html">&lt;h3 id="nginx-https配置"&gt;nginx https配置&lt;/h3&gt;
+
+&lt;p&gt;https的使用需要申请证书，证书需要去专门的CA申请，但是个人网站建议使用免费证书，可以节省不少费用，国内的免费证书申请网站有&lt;a href="https://www.wosign.com/"&gt;https://www.wosign.com/&lt;/a&gt;。国外的免费证书申请网站有&lt;a href="https://letsencrypt.org/"&gt;Let&amp;#39;s Encrypt&lt;/a&gt;,但是Let&amp;#39;s Encrypt的免费证书有效期只有90天，如果想长时间使用需要写定时脚本不断更新证书，具体操作可以看&lt;a href="https://imququ.com/post/letsencrypt-certificate.html"&gt;这篇博客&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;nginx上配置https比较简单只需要拿到crt证书，和证书的私钥在nginx上几行代码就可配置了&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;listen 443;
+ssl on;
+ssl_certificate dsjstage.bao.tv_bundle.crt;
+ssl_certificate_key dsjstage.bao.tv.key;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id="https-和-http的端口转发"&gt;https 和 http的端口转发&lt;/h3&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;
+return 301 https://$host$request_uri;
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id="nginx-cors-配置"&gt;nginx cors 配置&lt;/h3&gt;
+
+&lt;p&gt;js跨域问题是在实际开发中经常会遇到的情况，使用nginx解决跨越问题十分的方便。&lt;/p&gt;
+
+&lt;p&gt;nginx实现跨域的简单流程是对于简单请求，如GET，只需要在HTTP Response后添加Access-Control-Allow-Origin。&lt;br&gt;
+对于非简单请求，比如POST、PUT、DELETE等，浏览器会分两次应答。第一次preflight（method: OPTIONS），主要验证来源是否合法，并返回允许的Header等。第二次才是真正的HTTP应答。所以服务器必须处理OPTIONS应答。OPTIONS请求要做204处理。&lt;/p&gt;
+
+&lt;p&gt;接下来是各个参数&lt;/p&gt;
+
+&lt;p&gt;Access-Control-Allow-Origin（必含） – 允许的域名，只能填通配符或者单域名(尽量不要使用通配符)&lt;br&gt;
+Access-Control-Allow-Methods（必含） – 这允许跨域请求的http方法（常见有POST、GET、OPTIONS）&lt;br&gt;
+Access-Control-Allow-Headers（当预请求中包含Access-Control-Request-Headers时必须包含） – 这是对预请求当中Access-Control-Request-Headers的回复，和上面一样是以逗号分隔的列表，可以返回所有支持的头部。（设置时要注意查看http请求头的参数）&lt;br&gt;
+Access-Control-Allow-Credentials（可选） – 该项标志着请求当中是否包含cookies信息，只有一个可选值：true（必为小写）。如果不包含cookies，请略去该项，而不是填写false。这一项与XmlHttpRequest2对象当中的withCredentials属性应保持一致，即withCredentials为true时该项也为true；withCredentials为false时，省略该项不写。反之则导致请求失败。&lt;br&gt;
+Access-Control-Max-Age（可选） – 以秒为单位的缓存时间。预请求的的发送并非免费午餐，允许时应当尽可能缓存。&lt;/p&gt;
+&lt;pre class="highlight nginx"&gt;&lt;code&gt;
+     &lt;span class="k"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Access-Control-Allow-Origin'&lt;/span&gt; &lt;span class="s"&gt;'xxxx'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+     &lt;span class="k"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Access-Control-Allow-Credentials'&lt;/span&gt; &lt;span class="s"&gt;'true'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+     &lt;span class="k"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Access-Control-Allow-Methods'&lt;/span&gt; &lt;span class="s"&gt;'GET,&lt;/span&gt; &lt;span class="s"&gt;POST,&lt;/span&gt; &lt;span class="s"&gt;DELETE,&lt;/span&gt; &lt;span class="s"&gt;PUT,&lt;/span&gt; &lt;span class="s"&gt;OPTIONS'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+     &lt;span class="k"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Access-Control-Allow-Headers'&lt;/span&gt; &lt;span class="s"&gt;'Accept,&lt;/span&gt; &lt;span class="s"&gt;Authorization,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+     &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="s"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request_method&lt;/span&gt; &lt;span class="p"&gt;=&lt;/span&gt; &lt;span class="s"&gt;'OPTIONS')&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+       &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Access-Control-Allow-Origin'&lt;/span&gt; &lt;span class="s"&gt;'xxxx'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+       &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Access-Control-Max-Age'&lt;/span&gt; &lt;span class="mi"&gt;1728000&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+       &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Access-Control-Allow-Credentials'&lt;/span&gt; &lt;span class="s"&gt;'true'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+       &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Access-Control-Allow-Methods'&lt;/span&gt; &lt;span class="s"&gt;'GET,&lt;/span&gt; &lt;span class="s"&gt;POST,&lt;/span&gt; &lt;span class="s"&gt;DELETE,&lt;/span&gt; &lt;span class="s"&gt;PUT,&lt;/span&gt; &lt;span class="s"&gt;OPTIONS'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+       &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Access-Control-Allow-Headers'&lt;/span&gt; &lt;span class="s"&gt;'Accept,&lt;/span&gt; &lt;span class="s"&gt;Authorization,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+       &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Content-Type'&lt;/span&gt; &lt;span class="s"&gt;'text/plain&lt;/span&gt; &lt;span class="s"&gt;charset=UTF-8'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+       &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;'Content-Length'&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+       &lt;span class="kn"&gt;return&lt;/span&gt; &lt;span class="mi"&gt;204&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+     &lt;span class="p"&gt;}&lt;/span&gt;
+
+
+
+&lt;/code&gt;&lt;/pre&gt;
+</content>
+  </entry>
+  <entry>
+    <title>gitlab_develop_ci</title>
+    <link rel="alternate" href="http://blog.example.com/2016/03/15/gitlab_develop_ci/"/>
+    <id>http://blog.example.com/2016/03/15/gitlab_develop_ci/</id>
+    <published>2016-03-16T01:04:00+08:00</published>
+    <updated>2016-03-16T17:02:45+08:00</updated>
+    <summary type="html">&lt;h3 id="使用ci将项目部署到服务器"&gt;使用ci将项目部署到服务器&lt;/h3&gt;
+
+&lt;h4 id="runner配置"&gt;runner配置&lt;/h4&gt;
+
+&lt;p&gt;这篇文章中的服务器环境使用的是coreos，部署也是在docker中进行。runner是依然采用了上篇文章中使用的docker-runner执行&lt;/p&gt;
+
+&lt;p&gt;在runner服务器上执行下面这段命令，生成执行ci的docker&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;docker run -d --name gitlab-runner1 --restart always \
+             -v /var/run/docker.sock:/var/run/docker.sock \...&lt;/code&gt;&lt;/pre&gt;</summary>
+    <content type="html">&lt;h3 id="使用ci将项目部署到服务器"&gt;使用ci将项目部署到服务器&lt;/h3&gt;
+
+&lt;h4 id="runner配置"&gt;runner配置&lt;/h4&gt;
+
+&lt;p&gt;这篇文章中的服务器环境使用的是coreos，部署也是在docker中进行。runner是依然采用了上篇文章中使用的docker-runner执行&lt;/p&gt;
+
+&lt;p&gt;在runner服务器上执行下面这段命令，生成执行ci的docker&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;docker run -d --name gitlab-runner1 --restart always \
+             -v /var/run/docker.sock:/var/run/docker.sock \
+             -v /srv/gitlab-runner/config:/etc/gitlab-runner \
+             -v /root/.ssh/id_rsa:/root/id_rsa \
+             gitlab/gitlab-runner:latest
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里需要重点解释的是 &lt;code&gt;-v /root/.ssh/id_rsa:/root/id_rsa \&lt;/code&gt;，这个命令会将runner服务器上的私钥挂载到容器里面，这么做的原因是执行部署的时候需要ssh连接到目标服务器上，必须先将服务器私钥挂载进去才能在docker里面连接到服务器(这种方法并不好)。当然，首先我们需要在服务器上配好密钥，并且将公钥放到目标服务器上，这里就不详细解释怎么做了。&lt;/p&gt;
+
+&lt;p&gt;接下来运行&lt;code&gt;docker exec -it gitlab-runner gitlab-runner register&lt;/code&gt; 进行runner注册，我使用的executor是ssh，使用这个executor可以远程连接到目标服务器并进行操作&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;Please enter the gitlab-ci tags for this runner (comma separated):
+docker-develop
+Registering runner... succeeded                     runner=_m_ivm6R
+Please enter the executor: ssh, shell, parallels, docker, docker-ssh, virtualbox:
+ssh
+Please enter the SSH server address (eg. my.server.com):
+xxxxx
+Please enter the SSH server port (eg. 22):
+22
+Please enter the SSH user (eg. root):
+root
+Please enter the SSH password (eg. docker.io):
+
+Please enter path to SSH identity file (eg. /home/user/.ssh/id_rsa):
+/root/id_rsa
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;注意：最后要求填入SSH identity file的路径是指容器内id_rsa的路径，而不是runner服务器的id_rsa的路径&lt;/p&gt;
+
+&lt;p&gt;如果需要修改runner的配置，可以去find config.toml ,里面配置了runner的所有信息&lt;/p&gt;
+
+&lt;h4 id="deploy.sh"&gt;deploy.sh&lt;/h4&gt;
+
+&lt;p&gt;这里我将部署的工作写在了bash脚本里，然后执行ci时，直接执行这段脚本即可，这里只演示最简单的部署工作&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;
+&lt;span class="c"&gt;#!/bin/bash&lt;/span&gt;
+&lt;span class="nv"&gt;containerName&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;action_cable
+&lt;span class="nv"&gt;imageName&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;daocloud.io/gamefu/action_cable:latest
+
+&lt;span class="nb"&gt;echo&lt;/span&gt; &lt;span class="s2"&gt;"镜像名{&lt;/span&gt;&lt;span class="nv"&gt;$imageName&lt;/span&gt;&lt;span class="s2"&gt;}"&lt;/span&gt;
+
+&lt;span class="c"&gt;# 拉取最新镜像&lt;/span&gt;
+docker pull &lt;span class="nv"&gt;$imageName&lt;/span&gt;
+&lt;span class="c"&gt;# 删除老容器&lt;/span&gt;
+docker stop &lt;span class="nv"&gt;$containerName&lt;/span&gt;
+docker rm &lt;span class="nv"&gt;$containerName&lt;/span&gt;
+&lt;span class="c"&gt;# 运行新容器&lt;/span&gt;
+docker run --name &lt;span class="nv"&gt;$containerName&lt;/span&gt; &lt;span class="se"&gt;\&lt;/span&gt;
+          -e &lt;span class="nv"&gt;LANG&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;C.UTF-8 &lt;span class="se"&gt;\&lt;/span&gt;
+          -e &lt;span class="nv"&gt;RAILS_ENV&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;production &lt;span class="se"&gt;\&lt;/span&gt;
+          --link action_cable_mysql:mysql &lt;span class="se"&gt;\&lt;/span&gt;
+          -d &lt;span class="nv"&gt;$imageName&lt;/span&gt;
+
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id=".gitlab-ci.yml"&gt;.gitlab-ci.yml&lt;/h4&gt;
+
+&lt;p&gt;ci设置&lt;/p&gt;
+&lt;pre class="highlight yaml"&gt;&lt;code&gt;
+&lt;span class="s"&gt;staging_build&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+  &lt;span class="s"&gt;script&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+    &lt;span class="pi"&gt;-&lt;/span&gt; &lt;span class="s"&gt;source stag_deploy.sh&lt;/span&gt;
+  &lt;span class="s"&gt;only&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+    &lt;span class="pi"&gt;-&lt;/span&gt; &lt;span class="s"&gt;develop&lt;/span&gt;
+  &lt;span class="s"&gt;tags&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt;
+    &lt;span class="pi"&gt;-&lt;/span&gt; &lt;span class="s"&gt;docker-develop&lt;/span&gt;
+  &lt;span class="s"&gt;type&lt;/span&gt;&lt;span class="pi"&gt;:&lt;/span&gt; &lt;span class="s"&gt;deploy&lt;/span&gt;
+
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;only设置只有在develop分支合并或者push新内容时，执行这个ci&lt;/p&gt;
+
+&lt;p&gt;这样一来基本的ci部署完成了。。&lt;/p&gt;
+
+&lt;h3 id="总结"&gt;总结&lt;/h3&gt;
+
+&lt;p&gt;这篇文章算是我在爬坑的记录，后来我跟同事讨论，并且仔细一想之后，有几点觉得可以改进，首先是runner，由于ci做部署的时候，需要使用ssh连接到服务器，所以executor需要用ssh,而ssh本来就不应该运行到docker runner里面，而是应该直接运行到runner服务器上，这样就避免了很多像id_rsa找不到的各种坑，以及在做测试的时候遇到需要docker-login的时候，需要将/root/.docker/config.json挂载到docker里面的情况&lt;/p&gt;
+
+&lt;p&gt;经过这次爬坑后，个人觉得，runner应该直接安装在服务器上，test-ci使用docker executor，使用docker executor就能避免很多环境依赖问题, develop-ci使用ssh executor是更加合理的做法&lt;/p&gt;
+</content>
+  </entry>
   <entry>
     <title>centos7下完整配置gitlab及gitlab-ci docker测试</title>
     <link rel="alternate" href="http://blog.example.com/2016/03/08/gitlab_and_ci_deploy/"/>
@@ -680,480 +852,6 @@ bundle
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;然后需要在你以&lt;code&gt;BastationUser&lt;/code&gt;用户操作的控制器只要全部继承这个base_controller.rb就行了，其他用户的权限控制也是类似操作，至此，jwt做授权和权限控制就完成了&lt;/p&gt;
-</content>
-  </entry>
-  <entry>
-    <title>Ruby on Rails 终极部署方案 nginx+mina+puma</title>
-    <link rel="alternate" href="http://blog.example.com/2015/06/18/rails-nginx-mina-puma/"/>
-    <id>http://blog.example.com/2015/06/18/rails-nginx-mina-puma/</id>
-    <published>2015-06-18T22:43:00+08:00</published>
-    <updated>2015-06-19T00:46:25+08:00</updated>
-    <summary type="html">&lt;h2 id="搭建工具介绍"&gt;搭建工具介绍&lt;/h2&gt;
-
-&lt;p&gt;&lt;code&gt;Ruby on Rails&lt;/code&gt;作为一款十分优秀的web开发框架，在当前web领域中慢慢占据了越来越重要，秉承rails快速开发的特点，很多快速部署rails的方案也越来越多。这篇文章中所选的方案是我个人认为十分优秀的部署方案。这套部署方案的结构是，&lt;code&gt;nginx&lt;/code&gt;作为反向代理服务器负责负载均衡，&lt;code&gt;mina&lt;/code&gt;作为自动化部署工具，&lt;code&gt;puma&lt;/code&gt;作为rails的web服务器&lt;/p&gt;
-
-&lt;h3 id="nginx"&gt;nginx&lt;/h3&gt;
-
-&lt;p&gt;&lt;code&gt;nginx&lt;/code&gt;是一款优秀的代理服务器，其高效的性能已经得到了业界的广泛认可，相信作为web开发人员不会没听说过他的...&lt;/p&gt;</summary>
-    <content type="html">&lt;h2 id="搭建工具介绍"&gt;搭建工具介绍&lt;/h2&gt;
-
-&lt;p&gt;&lt;code&gt;Ruby on Rails&lt;/code&gt;作为一款十分优秀的web开发框架，在当前web领域中慢慢占据了越来越重要，秉承rails快速开发的特点，很多快速部署rails的方案也越来越多。这篇文章中所选的方案是我个人认为十分优秀的部署方案。这套部署方案的结构是，&lt;code&gt;nginx&lt;/code&gt;作为反向代理服务器负责负载均衡，&lt;code&gt;mina&lt;/code&gt;作为自动化部署工具，&lt;code&gt;puma&lt;/code&gt;作为rails的web服务器&lt;/p&gt;
-
-&lt;h3 id="nginx"&gt;nginx&lt;/h3&gt;
-
-&lt;p&gt;&lt;code&gt;nginx&lt;/code&gt;是一款优秀的代理服务器，其高效的性能已经得到了业界的广泛认可，相信作为web开发人员不会没听说过他的大名&lt;/p&gt;
-
-&lt;h3 id="mina"&gt;mina&lt;/h3&gt;
-
-&lt;p&gt;&lt;code&gt;mina&lt;/code&gt;是一款由ruby开发的自动化部署工具，其目的是为了简化每次rails代码提交时的部署，一键完成部署，杜绝了提交到git服务器后，又去服务器上git pull的情况&lt;/p&gt;
-
-&lt;h3 id="puma"&gt;puma&lt;/h3&gt;
-
-&lt;p&gt;&lt;code&gt;puma&lt;/code&gt;是一款专门针对rails的并发服务器，相对于&lt;code&gt;passenger&lt;/code&gt;，&lt;code&gt;puma&lt;/code&gt;可配置面更广，而且性能比&lt;code&gt;passenger&lt;/code&gt;更高，是rails web服务器的不二之选&lt;/p&gt;
-
-&lt;h2 id="部署前言"&gt;部署前言&lt;/h2&gt;
-
-&lt;p&gt;由于这篇文章需要很多铺垫，包括rails的安装下载,git的配置等等，需要读者自己去查阅资料或者查阅之前我写过的一些文章，如果期间有什么问题，请留言。。&lt;/p&gt;
-
-&lt;h2 id="mina"&gt;mina&lt;/h2&gt;
-
-&lt;p&gt;首先在你的rails项目的&lt;code&gt;Gemfile&lt;/code&gt;中加上&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="n"&gt;gem&lt;/span&gt; &lt;span class="n"&gt;mina&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;运行&lt;code&gt;bundle&lt;/code&gt; 安装 &lt;code&gt;mina&lt;/code&gt;，接着在你的rails项目根目录初始化&lt;code&gt;mina&lt;/code&gt;&lt;/p&gt;
-&lt;pre class="highlight plaintext"&gt;&lt;code&gt;mina init
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这是在你项目的config目录下会有一个&lt;code&gt;deploy.rb&lt;/code&gt;，配置&lt;code&gt;deploy.rb&lt;/code&gt;，列出重点部分，每一行的解释会附在代码的注释里&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;#服务器地址,是使用ssh的方式登录服务器&lt;/span&gt;
-&lt;span class="n"&gt;set&lt;/span&gt; &lt;span class="ss"&gt;:domain&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'root@192.168.0.103'&lt;/span&gt;
-&lt;span class="c1"&gt;#服务器中项目部署位置&lt;/span&gt;
-&lt;span class="n"&gt;set&lt;/span&gt; &lt;span class="ss"&gt;:deploy_to&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'/var/www/ruby_sample'&lt;/span&gt;
-&lt;span class="c1"&gt;#git代码仓库&lt;/span&gt;
-&lt;span class="n"&gt;set&lt;/span&gt; &lt;span class="ss"&gt;:repository&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'https://github.com/gameFu/ruby_sample.git'&lt;/span&gt;
-&lt;span class="c1"&gt;#git分支&lt;/span&gt;
-&lt;span class="n"&gt;set&lt;/span&gt; &lt;span class="ss"&gt;:branch&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'master'&lt;/span&gt;
-
-&lt;span class="c1"&gt;# 中括号里的文件 会出现在服务器项目附录的shared文件夹中，这里加入了secrets.yml，环境密钥无需跟开发计算机一样&lt;/span&gt;
-&lt;span class="n"&gt;set&lt;/span&gt; &lt;span class="ss"&gt;:shared_paths&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'config/database.yml'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'log'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;'config/secrets.yml'&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
-
-&lt;span class="c1"&gt;# 这个块里面的代码表示运行 mina setup时运行的命令&lt;/span&gt;
-&lt;span class="n"&gt;task&lt;/span&gt; &lt;span class="ss"&gt;:setup&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="ss"&gt;:environment&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
-
-  &lt;span class="c1"&gt;# 在服务器项目目录的shared中创建log文件夹&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[mkdir -p "#{deploy_to}/#{shared_path}/log"]&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[chmod g+rx,u+rwx "#{deploy_to}/#{shared_path}/log"]&lt;/span&gt;
-
-  &lt;span class="c1"&gt;# 在服务器项目目录的shared中创建config文件夹 下同&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[mkdir -p "#{deploy_to}/#{shared_path}/config"]&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[chmod g+rx,u+rwx "#{deploy_to}/#{shared_path}/config"]&lt;/span&gt;
-
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/#{shared_path}/config/database.yml"]&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/#{shared_path}/config/secrets.yml"]&lt;/span&gt;
-
-  &lt;span class="c1"&gt;# puma.rb 配置puma必须得文件夹及文件&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[mkdir -p "#{deploy_to}/shared/tmp/pids"]&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[chmod g+rx,u+rwx "#{deploy_to}/shared/tmp/pids"]&lt;/span&gt;
-
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[mkdir -p "#{deploy_to}/shared/tmp/sockets"]&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[chmod g+rx,u+rwx "#{deploy_to}/shared/tmp/sockets"]&lt;/span&gt;
-
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/shared/config/puma.rb"]&lt;/span&gt;
-  &lt;span class="n"&gt;queue&lt;/span&gt;  &lt;span class="sx"&gt;%[echo "-----&amp;gt; Be sure to edit 'shared/config/puma.rb'."]&lt;/span&gt;
-
-  &lt;span class="c1"&gt;# tmp/sockets/puma.state&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/shared/tmp/sockets/puma.state"]&lt;/span&gt;
-  &lt;span class="n"&gt;queue&lt;/span&gt;  &lt;span class="sx"&gt;%[echo "-----&amp;gt; Be sure to edit 'shared/tmp/sockets/puma.state'."]&lt;/span&gt;
-
-  &lt;span class="c1"&gt;# log/puma.stdout.log&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/shared/log/puma.stdout.log"]&lt;/span&gt;
-  &lt;span class="n"&gt;queue&lt;/span&gt;  &lt;span class="sx"&gt;%[echo "-----&amp;gt; Be sure to edit 'shared/log/puma.stdout.log'."]&lt;/span&gt;
-
-  &lt;span class="c1"&gt;# log/puma.stdout.log&lt;/span&gt;
-  &lt;span class="n"&gt;queue!&lt;/span&gt; &lt;span class="sx"&gt;%[touch "#{deploy_to}/shared/log/puma.stderr.log"]&lt;/span&gt;
-  &lt;span class="n"&gt;queue&lt;/span&gt;  &lt;span class="sx"&gt;%[echo "-----&amp;gt; Be sure to edit 'shared/log/puma.stderr.log'."]&lt;/span&gt;
-
-  &lt;span class="n"&gt;queue&lt;/span&gt;  &lt;span class="sx"&gt;%[echo "-----&amp;gt; Be sure to edit '#{deploy_to}/#{shared_path}/config/database.yml'."]&lt;/span&gt;
-&lt;span class="k"&gt;end&lt;/span&gt;
-
-&lt;span class="c1"&gt;#这个代码块表示运行 mina deploy时执行的命令&lt;/span&gt;
-&lt;span class="n"&gt;desc&lt;/span&gt; &lt;span class="s2"&gt;"Deploys the current version to the server."&lt;/span&gt;
-&lt;span class="n"&gt;task&lt;/span&gt; &lt;span class="ss"&gt;:deploy&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="ss"&gt;:environment&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
-  &lt;span class="n"&gt;to&lt;/span&gt; &lt;span class="ss"&gt;:before_hook&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
-  &lt;span class="k"&gt;end&lt;/span&gt;
-  &lt;span class="n"&gt;deploy&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
-    &lt;span class="c1"&gt;#重新拉git服务器上的最新版本，即使没有改变&lt;/span&gt;
-    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'git:clone'&lt;/span&gt;
-    &lt;span class="c1"&gt;#重新设定shared_path位置&lt;/span&gt;
-    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'deploy:link_shared_paths'&lt;/span&gt;
-    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'bundle:install'&lt;/span&gt;
-    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'rails:db_migrate'&lt;/span&gt;
-    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'rails:assets_precompile'&lt;/span&gt;
-    &lt;span class="n"&gt;invoke&lt;/span&gt; &lt;span class="ss"&gt;:'deploy:cleanup'&lt;/span&gt;
-
-    &lt;span class="n"&gt;to&lt;/span&gt; &lt;span class="ss"&gt;:launch&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
-      &lt;span class="n"&gt;queue&lt;/span&gt; &lt;span class="s2"&gt;"mkdir -p &lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;deploy_to&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;current_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/tmp/"&lt;/span&gt;
-      &lt;span class="c1"&gt;# queue "chown -R www-data #{deploy_to}"&lt;/span&gt;
-      &lt;span class="n"&gt;queue&lt;/span&gt; &lt;span class="s2"&gt;"touch &lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;deploy_to&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;current_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/tmp/restart.txt"&lt;/span&gt;
-    &lt;span class="k"&gt;end&lt;/span&gt;
-  &lt;span class="k"&gt;end&lt;/span&gt;
-&lt;span class="k"&gt;end&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这样一来mina的基本配置就完成，接下来只要将你开发环境的项目上传到git服务器，然后运行下面的命令就完成了&lt;/p&gt;
-&lt;pre class="highlight plaintext"&gt;&lt;code&gt;mina deploy
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;完成部署后，你就可以在指定的服务器目录下看到你的项目，目录结构如下&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;current -当前版本目录也就是项目目录&lt;/li&gt;
-&lt;li&gt;last_version -版本号&lt;/li&gt;
-&lt;li&gt;releases/ -过去的版本&lt;/li&gt;
-&lt;li&gt;scm/&lt;/li&gt;
-&lt;li&gt;shared/ 先前shared_path所设定另外拉出来的文件都在这里&lt;/li&gt;
-&lt;li&gt;tmp/&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;这里需要注意的几点&lt;br&gt;
-1.shared_path里面的文件不仅仅是表示这些文件会在服务器目录中出现在另外的目录里，也表示这些文件或者目录不会受到git版本库的控制，也就是说这些文件的配置必须在你服务器中手动去配置，这两个文件包括database.yml和secrets.yml,在shared/config目录下&lt;br&gt;
-2.针对deploy最好在服务器创建一个使用者，并针对他创建一个ssh authorized_keys,这里直接使用了root身份，参考&lt;a href="http://segmentfault.com/a/1190000002911599"&gt;centos7 服务器部署ssh证书授权登录&lt;/a&gt;，这样做能避免每次部署的时候都需要输入服务器账号密码&lt;/p&gt;
-
-&lt;h3 id="可能会遇到的问题"&gt;可能会遇到的问题&lt;/h3&gt;
-
-&lt;p&gt;由于生产环境一般会搭配类似于&lt;code&gt;postgresql&lt;/code&gt;等成熟数据库，这里我就举出一个搭建&lt;code&gt;postgresql&lt;/code&gt;，首先是启动数据库时（centos 7下），如果遇到问题请使用下面的命令就能看到详细的错误信息&lt;/p&gt;
-&lt;pre class="highlight plaintext"&gt;&lt;code&gt;systemctl status postgresql-9.4.service -l 
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;然后在跑&lt;code&gt;mina deploy&lt;/code&gt;时可能会报类似于这样的一个错误&lt;/p&gt;
-&lt;pre class="highlight plaintext"&gt;&lt;code&gt; Gem::LoadError: Specified 'postgresql' for database adapter, but the gem is not loaded. Add `gem 'pg'` to your Gemfile (and ensure its version is at the minimum required by ActiveRecord).
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;从错误信息上能很明显的看出是因为没有安装pg这个包导致的，但是有一种情况是明明在项目的&lt;code&gt;Gemfile&lt;/code&gt;上写上了pg但还是跑不过，造成这个的原因，可能是由于你的服务器环境缺少了pg的头文件导致的，如果是在centos下，只需要执行下面命令就能解决&lt;/p&gt;
-&lt;pre class="highlight plaintext"&gt;&lt;code&gt;yum install postgresql-libs
-yum install postgresql-devel
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h3 id="puma"&gt;Puma&lt;/h3&gt;
-
-&lt;p&gt;首先在你的&lt;code&gt;Gemfile&lt;/code&gt;里加上&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="n"&gt;gem&lt;/span&gt; &lt;span class="n"&gt;puma&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;然后在config目录下手动创建一个&lt;code&gt;puma.rb&lt;/code&gt;文件，配置&lt;code&gt;puma.rb&lt;/code&gt;文件&lt;/p&gt;
-&lt;pre class="highlight ruby"&gt;&lt;code&gt;
-&lt;span class="c1"&gt;#!/usr/bin/env puma&lt;/span&gt;
-
-&lt;span class="c1"&gt;#rails的运行环境&lt;/span&gt;
-&lt;span class="n"&gt;environment&lt;/span&gt; &lt;span class="s1"&gt;'production'&lt;/span&gt;
-&lt;span class="n"&gt;threads&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;64&lt;/span&gt;
-&lt;span class="n"&gt;workers&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;
-
-&lt;span class="c1"&gt;#项目名&lt;/span&gt;
-&lt;span class="n"&gt;app_name&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;"ruby_sample"&lt;/span&gt;
-&lt;span class="c1"&gt;#项目路径&lt;/span&gt;
-&lt;span class="n"&gt;application_path&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;"/var/www/&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;app_name&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;"&lt;/span&gt;
-&lt;span class="c1"&gt;#这里一定要配置为项目路径下地current&lt;/span&gt;
-&lt;span class="n"&gt;directory&lt;/span&gt; &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/current"&lt;/span&gt;
-
-&lt;span class="c1"&gt;#下面都是 puma的配置项&lt;/span&gt;
-&lt;span class="n"&gt;pidfile&lt;/span&gt; &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/tmp/pids/puma.pid"&lt;/span&gt;
-&lt;span class="n"&gt;state_path&lt;/span&gt; &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/tmp/sockets/puma.state"&lt;/span&gt;
-&lt;span class="n"&gt;stdout_redirect&lt;/span&gt; &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/log/puma.stdout.log"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/log/puma.stderr.log"&lt;/span&gt;
-&lt;span class="n"&gt;bind&lt;/span&gt; &lt;span class="s2"&gt;"unix://&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/tmp/sockets/&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;app_name&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;.sock"&lt;/span&gt;
-&lt;span class="n"&gt;activate_control_app&lt;/span&gt; &lt;span class="s2"&gt;"unix://&lt;/span&gt;&lt;span class="si"&gt;#{&lt;/span&gt;&lt;span class="n"&gt;application_path&lt;/span&gt;&lt;span class="si"&gt;}&lt;/span&gt;&lt;span class="s2"&gt;/shared/tmp/sockets/pumactl.sock"&lt;/span&gt;
-
-&lt;span class="c1"&gt;#后台运行&lt;/span&gt;
-&lt;span class="n"&gt;daemonize&lt;/span&gt; &lt;span class="kp"&gt;true&lt;/span&gt;
-&lt;span class="n"&gt;on_restart&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt;
-  &lt;span class="nb"&gt;puts&lt;/span&gt; &lt;span class="s1"&gt;'On restart...'&lt;/span&gt;
-&lt;span class="k"&gt;end&lt;/span&gt;
-&lt;span class="n"&gt;preload_app!&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这里需要注意的地方&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;threads&lt;/code&gt; - &lt;code&gt;puma&lt;/code&gt;的线程数，第一个参数是最小的线程数，第二个参数是最大线程数&lt;/li&gt;
-&lt;li&gt;bind - 这个指定的是&lt;code&gt;puma&lt;/code&gt;运行时产生的&lt;code&gt;socket&lt;/code&gt;，后面&lt;code&gt;nginx&lt;/code&gt;会用到&lt;/li&gt;
-&lt;li&gt;这里所有对应的目录是在&lt;code&gt;deploy&lt;/code&gt;配置中配置的，如果需要更改配置目录，&lt;code&gt;deploy.rb&lt;/code&gt;也需要相应的更改&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 id="nginx"&gt;Nginx&lt;/h2&gt;
-
-&lt;p&gt;下载安装&lt;code&gt;nginx&lt;/code&gt;后，打开&lt;code&gt;nginx&lt;/code&gt;的配置文件&lt;code&gt;nginx.conf&lt;/code&gt;进行配置&lt;/p&gt;
-&lt;pre class="highlight nginx"&gt;&lt;code&gt;  &lt;span class="k"&gt;worker_processes&lt;/span&gt;  &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-      &lt;span class="k"&gt;error_log&lt;/span&gt;  &lt;span class="n"&gt;/var/log/nginx/error.log&lt;/span&gt; &lt;span class="s"&gt;warn&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-      &lt;span class="k"&gt;pid&lt;/span&gt;        &lt;span class="n"&gt;/var/run/nginx.pid&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-      &lt;span class="k"&gt;events&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-          &lt;span class="kn"&gt;worker_connections&lt;/span&gt;  &lt;span class="mi"&gt;1024&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-      &lt;span class="p"&gt;}&lt;/span&gt;
-
-      &lt;span class="k"&gt;http&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-          &lt;span class="kn"&gt;include&lt;/span&gt;       &lt;span class="n"&gt;/etc/nginx/mime.types&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-          &lt;span class="kn"&gt;default_type&lt;/span&gt;  &lt;span class="nc"&gt;application/octet-stream&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-          &lt;span class="kn"&gt;log_format&lt;/span&gt;  &lt;span class="s"&gt;main&lt;/span&gt;  &lt;span class="s"&gt;'&lt;/span&gt;&lt;span class="nv"&gt;$remote_addr&lt;/span&gt; &lt;span class="s"&gt;-&lt;/span&gt; &lt;span class="nv"&gt;$remote_user&lt;/span&gt; &lt;span class="s"&gt;[&lt;/span&gt;&lt;span class="nv"&gt;$time_local&lt;/span&gt;&lt;span class="s"&gt;]&lt;/span&gt; &lt;span class="s"&gt;"&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="s"&gt;"&lt;/span&gt; &lt;span class="s"&gt;'&lt;/span&gt;
-                            &lt;span class="s"&gt;'&lt;/span&gt;&lt;span class="nv"&gt;$status&lt;/span&gt; &lt;span class="nv"&gt;$body_bytes_sent&lt;/span&gt; &lt;span class="s"&gt;"&lt;/span&gt;&lt;span class="nv"&gt;$http_referer&lt;/span&gt;&lt;span class="s"&gt;"&lt;/span&gt; &lt;span class="s"&gt;'&lt;/span&gt;
-                            &lt;span class="s"&gt;'"&lt;/span&gt;&lt;span class="nv"&gt;$http_user_agent&lt;/span&gt;&lt;span class="s"&gt;"&lt;/span&gt; &lt;span class="s"&gt;"&lt;/span&gt;&lt;span class="nv"&gt;$http_x_forwarded_for&lt;/span&gt;&lt;span class="s"&gt;"'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-          &lt;span class="kn"&gt;access_log&lt;/span&gt;  &lt;span class="n"&gt;/var/log/nginx/access.log&lt;/span&gt;  &lt;span class="s"&gt;main&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-          &lt;span class="kn"&gt;sendfile&lt;/span&gt;        &lt;span class="no"&gt;on&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-          &lt;span class="c1"&gt;#tcp_nopush     on;
-&lt;/span&gt;
-          &lt;span class="kn"&gt;keepalive_timeout&lt;/span&gt;  &lt;span class="mi"&gt;65&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-          &lt;span class="c1"&gt;#gzip  on;
-&lt;/span&gt;
-          &lt;span class="c1"&gt;#include /etc/nginx/conf.d/*.conf;
-&lt;/span&gt;          &lt;span class="kn"&gt;upstream&lt;/span&gt; &lt;span class="s"&gt;deploy&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-                  &lt;span class="kn"&gt;server&lt;/span&gt; &lt;span class="s"&gt;unix:///var/www/ruby_sample/shared/tmp/sockets/ruby_sample.sock&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-          &lt;span class="p"&gt;}&lt;/span&gt;
-
-          &lt;span class="kn"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-              &lt;span class="kn"&gt;listen&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-              &lt;span class="kn"&gt;server_name&lt;/span&gt; &lt;span class="s"&gt;your.server.domain.ip&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="c1"&gt;# change to match your URL
-&lt;/span&gt;              &lt;span class="kn"&gt;root&lt;/span&gt; &lt;span class="n"&gt;/var/www/ruby_sample/current/public&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="c1"&gt;# I assume your app is located at this location
-&lt;/span&gt;
-              &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="n"&gt;/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-                  &lt;span class="kn"&gt;proxy_pass&lt;/span&gt; &lt;span class="s"&gt;http://deploy&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="c1"&gt;# match the name of upstream directive which is defined above
-&lt;/span&gt;                  &lt;span class="kn"&gt;proxy_set_header&lt;/span&gt; &lt;span class="s"&gt;Host&lt;/span&gt; &lt;span class="nv"&gt;$host&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-                  &lt;span class="kn"&gt;proxy_set_header&lt;/span&gt; &lt;span class="s"&gt;X-Forwarded-For&lt;/span&gt; &lt;span class="nv"&gt;$proxy_add_x_forwarded_for&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-              &lt;span class="p"&gt;}&lt;/span&gt;
-
-              &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="p"&gt;~&lt;/span&gt;&lt;span class="sr"&gt;*&lt;/span&gt; &lt;span class="s"&gt;^/assets/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-                  &lt;span class="c1"&gt;# Per RFC2616 - 1 year maximum expiry
-&lt;/span&gt;                  &lt;span class="kn"&gt;expires&lt;/span&gt; &lt;span class="s"&gt;1y&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-                  &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;Cache-Control&lt;/span&gt; &lt;span class="s"&gt;public&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-                          &lt;span class="c1"&gt;# Some browsers still send conditional-GET requests if there's a
-&lt;/span&gt;                  &lt;span class="c1"&gt;# Last-Modified header or an ETag header even if they haven't
-&lt;/span&gt;                  &lt;span class="c1"&gt;# reached the expiry date sent in the Expires header.
-&lt;/span&gt;                  &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;Last-Modified&lt;/span&gt; &lt;span class="s"&gt;""&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-                  &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;ETag&lt;/span&gt; &lt;span class="s"&gt;""&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-                  &lt;span class="kn"&gt;break&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-              &lt;span class="p"&gt;}&lt;/span&gt;
-       &lt;span class="p"&gt;}&lt;/span&gt;
-      &lt;span class="p"&gt;}&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这里只需要注意的是&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;upstream中 server 要配置成你在puma中bind的 socket就行了&lt;/li&gt;
-&lt;li&gt;root要设置成你服务器项目的根目录，也就是&lt;code&gt;puma.rb&lt;/code&gt;中的 &lt;code&gt;directory&lt;/code&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;接下里只需要重启nginx服务器，整个rails的环境就搭建完成了&lt;/p&gt;
-&lt;pre class="highlight plaintext"&gt;&lt;code&gt;
-  nginx -s reload
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;如果完成了配置后访问站点是504，那么可能是两种情况，一是服务器防火墙问题，二是rails环境密钥的问题，请在&lt;a href="http://segmentfault.com/a/1190000002911605"&gt;使用passenger在Centos7部署nginx+Ruby on Rails&lt;/a&gt;中寻找答案&lt;/p&gt;
-</content>
-  </entry>
-  <entry>
-    <title>Laravel(2) 登录重写</title>
-    <link rel="alternate" href="http://blog.example.com/2015/06/16/laravel-2-login-rewrite/"/>
-    <id>http://blog.example.com/2015/06/16/laravel-2-login-rewrite/</id>
-    <published>2015-06-17T00:06:00+08:00</published>
-    <updated>2015-06-17T00:11:48+08:00</updated>
-    <summary type="html">&lt;h3 id="laravel-登录重写"&gt;laravel 登录重写&lt;/h3&gt;
-
-&lt;p&gt;权限控制是几乎每套成熟系统不可缺少的一部分，我们使用的权限控制方法是rbac，我将在这个系列的文章一步步完成一个比较复杂的rbac权限控制。&lt;/p&gt;
-
-&lt;p&gt;rbac权限控制是一个非常成熟的权限控制系统，其原理是给每个用户一个或多个角色 而每个角色对系统相应模块有访问权限,具体理论知识不多介绍。在我完成这个权限控制系统中，我将普通用户和管理员用户分开在数据库中存储，我们先完成普通用户的登录，这一部分相对于管理员用户会比较简单，同时也让大家理解下登录的流程。&lt;/p&gt;
-
-&lt;h5 id="未登录用户跳转到登录页面"&gt;未登录用户跳转到...&lt;/h5&gt;</summary>
-    <content type="html">&lt;h3 id="laravel-登录重写"&gt;laravel 登录重写&lt;/h3&gt;
-
-&lt;p&gt;权限控制是几乎每套成熟系统不可缺少的一部分，我们使用的权限控制方法是rbac，我将在这个系列的文章一步步完成一个比较复杂的rbac权限控制。&lt;/p&gt;
-
-&lt;p&gt;rbac权限控制是一个非常成熟的权限控制系统，其原理是给每个用户一个或多个角色 而每个角色对系统相应模块有访问权限,具体理论知识不多介绍。在我完成这个权限控制系统中，我将普通用户和管理员用户分开在数据库中存储，我们先完成普通用户的登录，这一部分相对于管理员用户会比较简单，同时也让大家理解下登录的流程。&lt;/p&gt;
-
-&lt;h5 id="未登录用户跳转到登录页面"&gt;未登录用户跳转到登录页面&lt;/h5&gt;
-
-&lt;p&gt;当我们访问某些一定要登录后才能使用的功能时 我们往往会有一个功能就是 如果没有登录的用户，就会直接跳转到登录功能 在laravel已经提供的代码中我们可以非常轻松完成这个功能&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;HomeController&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nx"&gt;Controller&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;__construct&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-    &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;middleware&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'auth'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;index&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-    &lt;span class="k"&gt;echo&lt;/span&gt; &lt;span class="nx"&gt;url&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'/home'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-    &lt;span class="k"&gt;echo&lt;/span&gt; &lt;span class="s1"&gt;'这是首页'&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-&lt;span class="p"&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;我们在随便一个需要进行登录才能使用的控制器中使调用auth这个控制器就可以了，这个控制器会去检查session中是否有登录信息来进行判断是否有没有登录 那么这个&amp;#39;auth&amp;#39;中间件在哪呢？&lt;/p&gt;
-
-&lt;p&gt;laravel中所有中间件都在app/Http/Kernel中注册&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-  &lt;span class="k"&gt;protected&lt;/span&gt; &lt;span class="nv"&gt;$routeMiddleware&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;
-    &lt;span class="s1"&gt;'auth'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'App\Http\Middleware\Authenticate'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-    &lt;span class="s1"&gt;'auth.basic'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'Illuminate\Auth\Middleware\AuthenticateWithBasicAuth'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-    &lt;span class="s1"&gt;'guest'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'App\Http\Middleware\RedirectIfAuthenticated'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-    &lt;span class="s1"&gt;'admin_auth'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'App\Http\Middleware\AdminPermissionCheck'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-  &lt;span class="p"&gt;];&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这个数组中key是中间件的别名 value是中间件的路径 由此我们可以找到别名为auth的中间件&lt;/p&gt;
-
-&lt;p&gt;找到App\Http\Middleware\Authenticate&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;handle&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nx"&gt;Closure&lt;/span&gt; &lt;span class="nv"&gt;$next&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;auth&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;guest&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
-    &lt;span class="p"&gt;{&lt;/span&gt;
-      &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;ajax&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
-      &lt;span class="p"&gt;{&lt;/span&gt;
-        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;response&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'Unauthorized.'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;401&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-      &lt;span class="p"&gt;}&lt;/span&gt;
-      &lt;span class="k"&gt;else&lt;/span&gt;
-      &lt;span class="p"&gt;{&lt;/span&gt;
-        &lt;span class="c1"&gt;//这个方法会跳转到Auth控制器的getLogin方法 
-&lt;/span&gt;                &lt;span class="c1"&gt;//如果没有 那么会自动跳转的视图文件夹下的auth login
-&lt;/span&gt;        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;redirect&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;guest&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'auth/login'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-      &lt;span class="p"&gt;}&lt;/span&gt;
-    &lt;span class="p"&gt;}&lt;/span&gt;
-
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;$next&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;handle方法是调用中间件时调用的方法  其中guest是判断有没有登录的方法 这里我们最有可能需要改的地方就是如果没有登录跳转的方法  如上面代码所示 跳转的路径为auth/login（这个路径已经在路由中配好，跳转到Auth控制器中得getLogin方法）&lt;/p&gt;
-
-&lt;h5 id="建立一个登录视图"&gt;建立一个登录视图&lt;/h5&gt;
-
-&lt;p&gt;在AuthController中建立一个登录视图&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-    &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;getLogin&lt;/span&gt;&lt;span class="p"&gt;(){&lt;/span&gt;
-        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;view&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;"auth.login"&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h5 id="表单数据验证"&gt;表单数据验证&lt;/h5&gt;
-
-&lt;p&gt;表单数据验证在实现部分是postLogin方法中的 UserLoginRequest $req&lt;br&gt;
-我们建立一个请求类来对表单进行数据验证 使用laravel 提供的php artsian make:request 能非常轻松的建立一个请求类&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;UserLoginRequest&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nx"&gt;Request&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-
-  &lt;span class="sd"&gt;/**
-   * Determine if the user is authorized to make this request.
-   *
-   * @return bool
-   */&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;authorize&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="kc"&gt;true&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-  &lt;span class="sd"&gt;/**
-   * Get the validation rules that apply to the request.
-   *
-   * @return array
-   */&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;rules&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;
-      &lt;span class="c1"&gt;//再这里对表单提交字段进行过滤
-&lt;/span&gt;      &lt;span class="s1"&gt;'identity'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'required|min:3|max:16'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
-      &lt;span class="s1"&gt;'password'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'required|min:6|max:16'&lt;/span&gt;
-    &lt;span class="p"&gt;];&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;sanitize&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;all&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-
-&lt;span class="p"&gt;}&lt;/span&gt;
-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h5 id="登录处理方法"&gt;登录处理方法&lt;/h5&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-    &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;postLogin&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;UserLoginRequest&lt;/span&gt; &lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="p"&gt;){&lt;/span&gt;
-
-   &lt;span class="c1"&gt;//这里对传递过来得字段进行了处理 这个函数为我自己定义的函数 仅仅是为了演示用
-&lt;/span&gt;     &lt;span class="nv"&gt;$identity&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;generateLoginIdentity&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;input&lt;/span&gt;&lt;span class="p"&gt;());&lt;/span&gt;
-     &lt;span class="nv"&gt;$identity&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'password'&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;input&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'password'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-    &lt;span class="c1"&gt;//验证用户账号密码
-&lt;/span&gt;    &lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;auth&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;attempt&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$indentity&lt;/span&gt;&lt;span class="p"&gt;)){&lt;/span&gt;
-      &lt;span class="c1"&gt;//登录成功 记录用户登录时间和登录ip
-&lt;/span&gt;      &lt;span class="nv"&gt;$user&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nx"&gt;User&lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="na"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'id'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;'='&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;auth&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;user&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;id&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;first&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-      &lt;span class="c1"&gt;// 触发一个事件
-&lt;/span&gt;      &lt;span class="nx"&gt;event&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nx"&gt;\App\Events\UserLogin&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$user&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="nv"&gt;$req&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;ip&lt;/span&gt;&lt;span class="p"&gt;()));&lt;/span&gt;
-      &lt;span class="c1"&gt;//重定向到想要访问的页面
-&lt;/span&gt;      &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;redirect&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;intended&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'/'&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-    &lt;span class="p"&gt;}&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;如上述代码所示 你可以对传过来得数据根据业务需要做进一步的处理&lt;/p&gt;
-
-&lt;p&gt;验证登录用户功能的代码是这一段$this-&amp;gt;auth-&amp;gt;attempt($indentity) 如果验证成功回返回true，这个函数是laravel自带Auth的一个方法 功能是去User表中匹配传过来的字段，如果需要验证更多字段,当验证成功后会将登录信息存入session中。当然Auth去查找匹配的表是可以更改的，我会在后面实现管理员用户的登录功能的时候演示怎么修改。&lt;/p&gt;
-
-&lt;p&gt;然后可以在下面的代码中继续完成你的业务逻辑  如我代码中所示的触发一个事件来记录登录事件和登录ip&lt;/p&gt;
-
-&lt;h5 id="已经登录-访问登录页面的自动跳转"&gt;已经登录 访问登录页面的自动跳转&lt;/h5&gt;
-
-&lt;p&gt;如果已经登录了 再访问登录页面 显然我们不需要再出现登录视图让其登录，我们需要将其跳转到其他路径，这个路径依然是可以修改的&lt;/p&gt;
-
-&lt;p&gt;首先我们看看再Auth控制器中哪里对是否已经登录进行判断&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;__construct&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;Guard&lt;/span&gt; &lt;span class="nv"&gt;$auth&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nx"&gt;Registrar&lt;/span&gt; &lt;span class="nv"&gt;$registrar&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-
-
-    &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;auth&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$auth&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-    &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;registrar&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$registrar&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-
-    &lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;middleware&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'guest'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;'except'&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s1"&gt;'getLogout'&lt;/span&gt;&lt;span class="p"&gt;]);&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;其中这个except表示getLogout这个方法将不会受到这个中间件的影响 getLogout通常是登出方法&lt;/p&gt;
-
-&lt;p&gt;在这个控制器的构造方法调用了一个中间件来对是否已经登录进行判断 ，通过查找kernel.php我们找到这个中间件&lt;br&gt;
-是App\Http\Middleware\RedirectIfAuthenticated.php&lt;/p&gt;
-&lt;pre class="highlight php"&gt;&lt;code&gt;&lt;span class="cp"&gt;&amp;lt;?php&lt;/span&gt;
-  &lt;span class="k"&gt;public&lt;/span&gt; &lt;span class="k"&gt;function&lt;/span&gt; &lt;span class="nf"&gt;handle&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nx"&gt;Closure&lt;/span&gt; &lt;span class="nv"&gt;$next&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-  &lt;span class="p"&gt;{&lt;/span&gt;
-    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$this&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;auth&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;check&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
-    &lt;span class="p"&gt;{&lt;/span&gt;
-                     &lt;span class="c1"&gt;//跳转的路径
-&lt;/span&gt;      &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nx"&gt;RedirectResponse&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;url&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'/'&lt;/span&gt;&lt;span class="p"&gt;));&lt;/span&gt;
-    &lt;span class="p"&gt;}&lt;/span&gt;
-
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;$next&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$request&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-  &lt;span class="p"&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;只要修改了上面代码中跳转的路径就可以了&lt;/p&gt;
-
-&lt;h3 id="总结"&gt;总结&lt;/h3&gt;
-
-&lt;p&gt;我们可以看到 laravel已经给我们封装了很多登录相关需要用到的功能 ，非常的完善，但也给了我们很大的自由随意去修改登录相关的流程，我们可以随意根据需要业务逻辑修改登录的功能。&lt;/p&gt;
 </content>
   </entry>
 </feed>
