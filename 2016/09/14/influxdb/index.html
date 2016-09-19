@@ -1,0 +1,113 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><meta content="initial-scale=1.0, user-scalable=no" name="viewport" /><title>influxdb continuous query实战总结 | gameFu's Blog</title><meta description="Time series Database(时序数据库)  什么是时间序列数据？最简单的定义就是数据格式里包含timestamp字段的数据。比如股票市场的价格，环境中的温度，主机的CPU使用率等。但是又有什么数据是不包含timestamp的呢？几乎所有的数据都可以打上一个timestamp字段。时间序列数据更重要的一个属性是如何去查询它。在查询的时候，对于时间序列我们总是会带上一个时间范围去过滤数据。同时查询的结果里也总是会包含timestamp字段。  在实际开发使用中，我们或许会有类似这..." /><link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" /><link href="../../../../stylesheets/all-d495412b.css" rel="stylesheet" type="text/css" /><link href="../../../../images/favicon-6c3f3d04.png" rel="icon" type="image/png" /></head><body><header><div id="top-menu"><div class="top-menu-wrapper"><div class="top-menu-list"><ul><li><a href="/">Home</a></li><li><a href="/archives/">Archives</a></li><li><a href="/tags/">Tags</a></li><li><a href="/by-year/">By Year</a></li></ul></div><div class="feed"><a href="/feed.xml"><i class="fa fa-rss-square"></i></a></div></div></div><h1 class="logo"><a href="/" title="gameFu's Blog"><span class="logo-text">gameFu's Blog</span></a></h1></header><main><article><h1 class="article-title">influxdb continuous query实战总结</h1><div class="posted-date-wrapper"><i class="fa fa-clock-o"></i><span class="posted-date">September 14, 2016</span></div><div class="tag-labels"><a href="/tags/influxdb/"><small class="tag-label">influxdb</small></a></div><hr class="article-header-separator" /><h2 id="time-series-database(时序数据库)">Time series Database(时序数据库)</h2>
+
+<p>什么是时间序列数据？最简单的定义就是数据格式里包含timestamp字段的数据。比如股票市场的价格，环境中的温度，主机的CPU使用率等。但是又有什么数据是不包含timestamp的呢？几乎所有的数据都可以打上一个timestamp字段。时间序列数据更重要的一个属性是如何去查询它。在查询的时候，对于时间序列我们总是会带上一个时间范围去过滤数据。同时查询的结果里也总是会包含timestamp字段。</p>
+
+<p>在实际开发使用中，我们或许会有类似这样的需求，收集一个时间段内大量的数据，然后利用这个时段内的数据进行统计运算这样的需求，时序数据库正是为这样的需求而定制的，以influxdb为例，数据存储跟传统数据库不一样，是以无序的形式存储，插入代价更低，并且时序数据库会提供大量与时间相关的函数，快速方便的进行我们需要的统计计算。在数据监控领域，时序数据库已经成了越来越多的选择</p>
+
+<h2 id="influxdb">influxdb</h2>
+
+<p>InfluxDB 是一个开源分布式的时序、事件和指标数据库。使用 Go 语言编写，无需外部依赖。其设计目标是实现分布式和水平伸缩扩展。 它有三大特性：</p>
+
+<p>1.Time Series （时间序列）：你可以使用与时间有关的相关函数（如最大，最小，求和等）<br>
+2.Metrics（度量）：你可以实时对大量数据进行计算<br>
+3.Eevents（事件）：它支持任意的事件数据</p>
+
+<h3 id="术语概念">术语概念</h3>
+
+<table><thead>
+<tr>
+<th>术语</th>
+<th>介绍</th>
+</tr>
+</thead><tbody>
+<tr>
+<td><code>database</code></td>
+<td>相当于mysql中的database</td>
+</tr>
+<tr>
+<td><code>measurement</code></td>
+<td>相当于mysql中的表</td>
+</tr>
+<tr>
+<td><code>point</code></td>
+<td>相当于mysql中的行</td>
+</tr>
+<tr>
+<td><code>tag</code></td>
+<td>相当于mysql中的索引，只支持字符串类型</td>
+</tr>
+<tr>
+<td><code>field</code></td>
+<td>相当于mysql中的列，支持多种类型</td>
+</tr>
+<tr>
+<td><code>retention policy</code></td>
+<td>保存策略，这是influxdb特有的属性，rp指定数据在influxdb中的保存时间，时间已过，influxdb会自动清除数据（注：influxdb没有直接提供删除数据的接口，若要删除数据只能通过修改数据的rp来删除数据）</td>
+</tr>
+<tr>
+<td><code>continuous query</code></td>
+<td>influxdb特色功能之一，相当于定时任务</td>
+</tr>
+</tbody></table>
+
+<h2 id="实战">实战</h2>
+
+<p>需求：制作一个视频pgc的实时播放量排行列表</p>
+
+<p>视频pgc相当于暴走漫画，暴走漫画旗下会有在各大视频网站都有自己的主页，每个站点都有自己的播放量，现在我们需要将这些pgc下面的数据聚合起来，并且需要获取最新的内容。如果每次取这个列表的时候都要重新算一遍，无疑十分的浪费，这个时候就可以使用influxdb的cq来实现这个功能，通过cq，我们能定时的算出pgc的排行榜，并写入一种新表中，每次我们读取数据的时候，只要去读那张表就可以了。</p>
+
+<p><img title="pgc-er图" alt="pgc-er" src="../../../../images/influxdb-er-1f4eab66.png" /></p>
+
+<p>team: pgc+站点名（如暴走漫画-youku）</p>
+
+<h3 id="continuous-query设计">continuous query设计</h3>
+
+<p>首先先看一下我们实时抓取过来的数据的结构</p>
+
+<p><img title="pgc-数据结构" alt="pgc-er" src="../../../../images/influxdb-data-fcaba8b1.png" /></p>
+
+<p>pgc_name是指pgc的名称如暴走漫画，pgc_user_id指pgc+站点名的唯一标识， play_count是播放量</p>
+
+<p>由于原始数据得到的是pgc下的某个站点数据，因而我们需要将其各个站点的数据加起来，并且我们要做的是每小时更新的排行榜，因此我们需要每小时更新一次最新的数据。因此我们需要一个每小时执行一次的cq</p>
+<pre class="highlight plaintext"><code>
+CREATE CONTINUOUS QUERY sum1 ON rails BEGIN SELECT sum(play_num) INTO rails.pgc_rank FROM rails.pgc_data GROUP BY pgc_name, time(1h) END
+
+</code></pre>
+
+<p>这段cq所执行的是，每隔一小时，执行 <code>SELECT sum(play_num) INTO rails.pgc_rank FROM rails.pgc_data GROUP BY pgc_name</code> 这条语句，这条语句通过group对数据进行分组计算，并写入一张新表pgc_rank中，这样一来我们要获取最新的排名数据，只需要去查pgc_rank这张表就行了。</p>
+
+<p>注意： cq执行的语句必须在group by中指定time否则将无法执行，同时，如果不手动指定RESAMPLE(也就是执行时间)，默认的执行时间间隔是group by 指定的时间间隔</p>
+
+<p>让我们来看下这条语句每小时具体执行了什么样的语句</p>
+<pre class="highlight plaintext"><code>
+SELECT sum(play_num) INTO rails.pgc_rank FROM rails.pgc_data WHERE time &gt;= '2016-09-04T09:00:00Z' AND time &lt; '2016-09-04T10:01:00Z' GROUP BY pcg_name, time(1h)
+
+</code></pre>
+
+<p>可以看到这个cq每次执行的时候，都以执行的时间为节点，去查一小时前的这个时间到现在内所有的数据，这样就避免了很多繁复的工作。当然influxdb在cq上提供了十分强大的可定制功能可以满足各种执行事的时间间隔，如执行时统计的是以执行的这个时间为节点的两个小时前到1个小时前之间的数据等等这样的需求</p>
+
+<h3 id="回填continuous-query数据">回填continuous query数据</h3>
+
+<p>通过之前的语句我们也看到了，cq执行的时候是以这个cq的时间作为当前时间节点，这也就意味着，这个cq创建之前，所有的数据是都没有办法统计写入的，因此如果要想补充cq创建之前的数据，就只能手动回填数据，回填语句基本可以仿照cq执行的语句来操作。如我要回填2016-07-28到2016-09-04的数据，只需要执行类似于这样的语句就可以了</p>
+<pre class="highlight plaintext"><code>
+SELECT sum(play_num) INTO rails.pgc_rank FROM rails.pgc_data WHERE time &gt;= '2016-07-28T09:00:00Z' AND time &lt; '2016-09-04T10:01:00Z' GROUP BY pcg_name, time(1h)
+
+</code></pre>
+
+<h3 id="查询最新排行榜">查询最新排行榜</h3>
+
+<p>我在写这篇博客的时候，influxdb稳定版本为0.13, 测试版为1.0，截止到最新的测试版，influxdb并没有加入子查询功能(虽然很早的时候已经有了这个issue - -)，因此一条查询语句无法直接查出排行榜，只能查出，当前最新时段所有pgc的播放量数据，然后在用其他方式进行排序</p>
+<pre class="highlight plaintext"><code>select * from pgc_rank group by pgc_name order by desc limit 1
+
+</code></pre>
+
+<p>首先我们写进的新表中存的是，各个pgc在各个时段上的总播放量排行，因此我们需要取最近的播放量进行排名，首先group by 分组，然后用order by desc对分组数据进行排序，最后只取每个分组中的第一个数据， order by desc在influxdb中默认是按时间倒序排列，同时，指定按时间倒序排列后就不能再指定其他的顺序排列，否则就会报错。</p>
+
+<p>去出来的数据最终是这个样子</p>
+
+<p><img title="pgc-排名" alt="pgc-rank" src="../../../../images/pgc_rank-1c51ca1f.png" /></p>
+
+<h2 id="总结">总结</h2>
+
+<p>在使用influxdb的这个过程，充分感受到了他的强大之处，尤其是处理类似这种极度依赖时间的数据，influxdb的优势无比的明显，无论是性能，还是便利性都是高于传统数据库。但是influxdb还在蓬勃发展中，很多功能并不完善，但是有理由继续期待这个数据库。</p>
+<div class="social"></div></article></main><footer><div class="footer-wrapper"><div class="author"><div class="image-wrapper"><a href="/author/"><img alt="author" src="/images/profile-1e71686a.png" /></a></div></div><div class="copyright"><i class="fa fa-copyright"></i> 2016 <a href="/">gameFu's Blog</a> - Site Author</div></div></footer></body></html>
